@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PeerDrop — P2P Encrypted Zero-Knowledge File Sharing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="mesh-bg"></div>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+          <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+          <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">PeerDrop</h1>
+        <div class="brand-sub">Zero-Knowledge P2P Mesh</div>
+      </div>
+    </div>
+
+    <!-- Active Room Badge & Share -->
+    <div class="header-center">
+      <div class="room-pill">
+        <span class="room-label">ROOM:</span>
+        <span id="roomCodeDisplay" class="room-code">PD-MESH</span>
+      </div>
+      <button id="btnCopyInvite" class="btn-action" title="Copy Invite Link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+        </svg>
+        <span>Invite Peer</span>
+      </button>
+    </div>
+
+    <!-- Local Device Indicator -->
+    <div class="header-right">
+      <div class="device-pill">
+        <span class="pulse-indicator"></span>
+        <span id="localDeviceLabel">Detecting Device...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hub -->
+  <main class="main-container">
+    
+    <!-- Radar Scanner Area -->
+    <section class="radar-section">
+      <div class="radar-wrapper" id="radarWrapper">
+        <div class="radar-circle circle-1"></div>
+        <div class="radar-circle circle-2"></div>
+        <div class="radar-circle circle-3"></div>
+        <div class="radar-sweep"></div>
+        <div class="radar-center-node">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+
+        <!-- Dynamic Peer Node Pins -->
+        <div id="peerPinsContainer" class="peer-pins-container"></div>
+      </div>
+
+      <div class="scanner-status" id="scannerStatus">
+        Scanning for peers in room...
+      </div>
+    </section>
+
+    <!-- Transfer Station & Dropzone -->
+    <section class="transfer-section">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" multiple style="display: none;" />
+        <div class="dropzone-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <h3 class="dropzone-title">Drag & Drop Files Here</h3>
+        <p class="dropzone-sub">or click to browse from device. Direct encrypted P2P data channels.</p>
+        <div class="dropzone-badge">⚡ Zero Server Storage &bull; End-to-End Encrypted</div>
+      </div>
+
+      <!-- Active File Transfer HUD -->
+      <div class="transfer-hud" id="transferHud" style="display: none;">
+        <div class="hud-header">
+          <div class="file-details">
+            <span class="file-icon">📄</span>
+            <div>
+              <div class="file-name" id="hudFileName">file_name.zip</div>
+              <div class="file-size" id="hudFileSize">0 KB / 0 KB</div>
+            </div>
+          </div>
+          <div class="hud-metrics">
+            <span class="transfer-speed" id="hudSpeed">0 MB/s</span>
+            <span class="transfer-pct" id="hudPercent">0%</span>
+          </div>
+        </div>
+
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="hudProgressFill" style="width: 0%;"></div>
+        </div>
+
+        <div class="hud-footer">
+          <span id="hudStatus">Streaming chunks over WebRTC DataChannel...</span>
+        </div>
+      </div>
+
+      <!-- Transfer History Log -->
+      <div class="history-panel" id="historyPanel">
+        <h4 class="history-title">Session Activity</h4>
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No transfers yet. Share the room link to connect a second device.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

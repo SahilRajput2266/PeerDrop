@@ -1,0 +1,29 @@
+{
+  "name": "peerdrop",
+  "version": "1.0.0",
+  "description": "Zero-Knowledge P2P Encrypted File Sharing & Direct Stream over WebRTC Data Channels (Browser-to-Browser, Zero Server Storage).",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "webrtc",
+    "p2p",
+    "file-transfer",
+    "datachannel",
+    "file-sharing",
+    "websockets",
+    "socket-io",
+    "privacy",
+    "zero-knowledge"
+  ],
+  "author": "Sahil Chauhan (Sahil Rajput) <sahilrajput6244@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
