@@ -125,32 +125,26 @@
     })
     .catch(() => {});
 
-  // Socket Connection URL resolution:
-  const RENDER_BACKEND_URL = 'https://thakurboothouse.onrender.com';
-  
-  // Check if hosted on local Node.js server (localhost, 127.0.0.1, or local Wi-Fi LAN IP with port 3003)
-  const isLocalServer = (window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' || 
-                         window.location.hostname.startsWith('192.168.') ||
-                         window.location.hostname.startsWith('10.')) && 
-                        (window.location.port === '3003' || window.location.port === '5050');
+  // Socket Connection URL:
+  // Central WebRTC Socket.io Signaling Server (Thakur Boot House on Render)
+  const THAKUR_BACKEND_URL = 'https://thakurboothouse.onrender.com';
 
-  // Allow explicit override via ?backend=render or ?backend=local
+  // Always connect to Thakur Boot House backend so every device (PC, Mobile, Vercel)
+  // joins the exact same signaling room regardless of where frontend is loaded from.
   const backendParam = urlParams.get('backend');
-  let socketUrl = RENDER_BACKEND_URL;
-  if (backendParam === 'local') {
-    socketUrl = '';
-  } else if (backendParam === 'render') {
-    socketUrl = RENDER_BACKEND_URL;
-  } else if (isLocalServer) {
-    socketUrl = ''; // Same local server origin
-  }
+  const socketUrl = (backendParam === 'local') ? '' : THAKUR_BACKEND_URL;
 
   const socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     withCredentials: false,
     timeout: 20000,
   });
+
+  // Client-side keep-alive heartbeat to Thakur Boot House backend (every 4 mins)
+  function sendBackendHeartbeat() {
+    fetch(`${THAKUR_BACKEND_URL}/api/v1/health`, { mode: 'no-cors' }).catch(() => {});
+  }
+  setInterval(sendBackendHeartbeat, 4 * 60 * 1000);
 
   // WebRTC Configuration
   const rtcConfig = {
@@ -171,7 +165,7 @@
       clientName: deviceName + ' #' + socket.id.substring(0, 4),
       device: deviceName
     });
-    const relayName = socketUrl ? 'Render Cloud' : 'Local Relay';
+    const relayName = socketUrl ? 'Thakur Server (Render)' : 'Local Relay';
     if (relayDot) relayDot.className = 'relay-dot connected';
     if (relayText) relayText.textContent = `Live: ${relayName}`;
     showToast(`Connected to room: ${roomId} (${relayName}) ✨`);
