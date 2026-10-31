@@ -57,6 +57,8 @@
   const historyCount = document.getElementById('historyCount');
   const btnHistoryClear = document.getElementById('btnHistoryClear');
   const toastContainer = document.getElementById('toastContainer');
+  const btnHudDownload = document.getElementById('btnHudDownload');
+  const btnHudDownloadText = document.getElementById('btnHudDownloadText');
 
   // Modal elements
   const modalBackdrop = document.getElementById('modalBackdrop');
@@ -404,6 +406,22 @@
     return peerData;
   }
 
+  // In-Memory Session Cache for Received Files (enables later downloading without re-transfer)
+  const sessionReceivedBlobs = new Map(); // fileId -> { fileId, blob, name, size, mimeType, objectUrl }
+
+  function triggerFileDownload(url, filename) {
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.warn('Auto-download notice (manual button available):', e);
+    }
+  }
+
   // Incoming File Receiving Buffer
   let incomingFileMeta = null;
   let receivedBuffers = [];
@@ -439,6 +457,7 @@
             transferStartTime = Date.now();
             lastReceiverUiUpdate = 0;
             transferHud.style.display = 'block';
+            if (btnHudDownload) btnHudDownload.style.display = 'none';
             hudFileName.textContent = msg.name;
             hudFileSize.textContent = `0 B / ${formatBytes(msg.size)}`;
             hudPercent.textContent = '0%';
@@ -448,26 +467,46 @@
           } else if (msg.type === 'file-end') {
             if (!incomingFileMeta) return;
 
+            const fileId = 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const fileName = incomingFileMeta.name;
+            const fileSize = incomingFileMeta.size;
+            const mimeType = incomingFileMeta.mimeType || 'application/octet-stream';
+
             // Assemble blob from received chunks
-            const blob = new Blob(receivedBuffers, { type: incomingFileMeta.mimeType || 'application/octet-stream' });
-            receivedBuffers = []; // Clear RAM buffers immediately
+            const blob = new Blob(receivedBuffers, { type: mimeType });
+            receivedBuffers = []; // Clear RAM chunk arrays
 
             const downloadUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = incomingFileMeta.name;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
 
-            hudStatus.textContent = 'Transfer Completed! Saved to Downloads.';
+            // Save in session map so user can re-download anytime
+            sessionReceivedBlobs.set(fileId, {
+              fileId,
+              blob,
+              name: fileName,
+              size: fileSize,
+              mimeType,
+              objectUrl: downloadUrl
+            });
+
+            // Try auto-download once (if allowed by browser popup settings)
+            triggerFileDownload(downloadUrl, fileName);
+
+            // Present persistent manual download button in HUD
+            if (btnHudDownload) {
+              btnHudDownload.style.display = 'inline-flex';
+              if (btnHudDownloadText) btnHudDownloadText.textContent = `Download (${formatBytes(fileSize)})`;
+              btnHudDownload.onclick = () => {
+                triggerFileDownload(downloadUrl, fileName);
+                showToast(`Saving ${fileName} 💾`);
+              };
+            }
+
+            hudStatus.textContent = 'Transfer complete! Ready to save.';
             hudPercent.textContent = '100%';
             hudProgressFill.style.width = '100%';
-            addHistoryItem(incomingFileMeta.name, formatBytes(incomingFileMeta.size), 'Received');
-            showToast(`Downloaded ${incomingFileMeta.name} 🎉`);
+            addHistoryItem(fileName, formatBytes(fileSize), 'Received', fileId);
+            showToast(`Received ${fileName} 🎉 (Tap Download button anytime)`);
             incomingFileMeta = null;
-            setTimeout(() => { transferHud.style.display = 'none'; }, 4000);
           }
         } else {
           // Binary chunk received
@@ -560,6 +599,7 @@
 
     isTransferring = true;
     transferHud.style.display = 'block';
+    if (btnHudDownload) btnHudDownload.style.display = 'none';
     hudFileName.textContent = file.name;
     hudFileSize.textContent = `0 B / ${formatBytes(file.size)}`;
     hudPercent.textContent = '0%';
@@ -894,13 +934,35 @@
     const div = document.createElement('div');
     div.className = 'history-item';
     const timeStr = item.time ? new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
+    const canDownload = item.fileId && sessionReceivedBlobs.has(item.fileId);
+
     div.innerHTML = `
       <div class="history-item-left">
         <span class="history-item-name">${escapeHTML(item.name)}</span>
         <span class="history-item-meta">${item.size} &bull; ${timeStr}</span>
       </div>
-      <span class="history-badge-type ${item.type === 'Sent' ? 'type-sent' : 'type-received'}">${item.type}</span>
+      <div class="history-item-actions">
+        ${canDownload ? `<button type="button" class="btn-history-download" data-file-id="${item.fileId}" title="Download this file again"><span>⬇ Download</span></button>` : ''}
+        <span class="history-badge-type ${item.type === 'Sent' ? 'type-sent' : 'type-received'}">${item.type}</span>
+      </div>
     `;
+
+    if (canDownload) {
+      const btn = div.querySelector('.btn-history-download');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const cached = sessionReceivedBlobs.get(item.fileId);
+          if (cached && cached.objectUrl) {
+            triggerFileDownload(cached.objectUrl, cached.name);
+            showToast(`Downloading ${cached.name} 💾`);
+          } else {
+            showToast('⚠️ File expired from memory. Please request a new transfer.');
+          }
+        });
+      }
+    }
+
     historyList.prepend(div);
   }
 
@@ -924,11 +986,12 @@
     if (historyCount) historyCount.textContent = `${list.length} transfer${list.length > 1 ? 's' : ''}`;
   }
 
-  function addHistoryItem(name, size, type) {
+  function addHistoryItem(name, size, type, fileId = null) {
     const record = {
       name,
       size,
       type,
+      fileId,
       time: Date.now()
     };
     saveHistoryToStorage(record);

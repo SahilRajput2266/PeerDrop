@@ -1293,6 +1293,33 @@ body {
   animation: pulseBeacon 1s infinite;
 }
 
+.btn-hud-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-hud-download:hover {
+  background: linear-gradient(135deg, #34D399, #10B981);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.6);
+}
+
+.btn-hud-download:active {
+  transform: translateY(0);
+}
+
 /* ==========================================================
    Activity Stream (Persistent History)
    ========================================================== */
@@ -1421,6 +1448,37 @@ body {
   background: rgba(16, 185, 129, 0.15);
   color: var(--emerald-primary);
   border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.history-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-history-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 8px;
+  color: var(--emerald-primary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-history-download:hover {
+  background: rgba(16, 185, 129, 0.28);
+  border-color: var(--emerald-primary);
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
 }
 
 .activity-empty-state {
