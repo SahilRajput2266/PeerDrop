@@ -1,12 +1,5 @@
 {
-  "version": 2,
-  "cleanUrls": true,
+  "framework": null,
   "outputDirectory": "public",
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ]
+  "cleanUrls": true
 }
-
