@@ -113,6 +113,17 @@ io.on('connection', (socket) => {
     roomPeers.set(socket.id, peerInfo);
   });
 
+  socket.on('peer:update-name', ({ name }) => {
+    if (peerInfo && name) {
+      peerInfo.name = name.trim();
+      if (userRoom && rooms.has(userRoom)) {
+        const roomPeers = rooms.get(userRoom);
+        roomPeers.set(socket.id, peerInfo);
+        socket.to(userRoom).emit('peer:updated', peerInfo);
+      }
+    }
+  });
+
   socket.on('room:leave', () => {
     leaveRoom();
   });

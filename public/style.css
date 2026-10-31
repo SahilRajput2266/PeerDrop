@@ -843,7 +843,7 @@ body {
   to   { transform: rotate(360deg); }
 }
 
-/* Center Radar Node (You) */
+/* Center Radar Node (You - Tap to Rename) */
 .center-radar-node {
   position: absolute;
   top: 50%;
@@ -852,8 +852,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  z-index: 10;
-  pointer-events: none;
+  z-index: 25;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.center-radar-node:hover {
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
 .center-node-pulse {

@@ -77,37 +77,46 @@
   let deviceName = localStorage.getItem('peerdrop_device_name') || defaultDevice;
   localDeviceLabel.textContent = deviceName;
 
-  // Device Rename Modal
-  if (devicePill) {
-    devicePill.addEventListener('click', () => {
-      inputDeviceName.value = deviceName;
-      modalBackdrop.style.display = 'flex';
-      inputDeviceName.focus();
-    });
+  const centerRadarNode = document.getElementById('centerRadarNode');
+  const centerNodeLabel = document.getElementById('centerNodeLabel');
+  if (centerNodeLabel) centerNodeLabel.textContent = deviceName;
+
+  // Device Rename Modal System
+  function openRenameModal() {
+    inputDeviceName.value = deviceName;
+    modalBackdrop.style.display = 'flex';
+    inputDeviceName.focus();
+    inputDeviceName.select();
   }
 
-  if (btnCancelRename) {
-    btnCancelRename.addEventListener('click', () => {
-      modalBackdrop.style.display = 'none';
-    });
+  function saveNewDeviceName() {
+    const val = (inputDeviceName.value || '').trim();
+    if (val && val !== deviceName) {
+      deviceName = val;
+      localStorage.setItem('peerdrop_device_name', deviceName);
+      localDeviceLabel.textContent = deviceName;
+      if (centerNodeLabel) centerNodeLabel.textContent = deviceName;
+      socket.emit('peer:update-name', { name: deviceName });
+      showToast(`Device renamed to: ${deviceName} ✎`);
+    }
+    modalBackdrop.style.display = 'none';
   }
 
+  if (devicePill) devicePill.addEventListener('click', openRenameModal);
+  if (centerRadarNode) centerRadarNode.addEventListener('click', openRenameModal);
+  if (btnCancelRename) btnCancelRename.addEventListener('click', () => { modalBackdrop.style.display = 'none'; });
   if (modalBackdrop) {
     modalBackdrop.addEventListener('click', (e) => {
       if (e.target === modalBackdrop) modalBackdrop.style.display = 'none';
     });
   }
-
-  if (btnSaveRename) {
-    btnSaveRename.addEventListener('click', () => {
-      const val = (inputDeviceName.value || '').trim();
-      if (val) {
-        deviceName = val;
-        localStorage.setItem('peerdrop_device_name', deviceName);
-        localDeviceLabel.textContent = deviceName;
-        showToast(`Device renamed to: ${deviceName} ✎`);
+  if (btnSaveRename) btnSaveRename.addEventListener('click', saveNewDeviceName);
+  if (inputDeviceName) {
+    inputDeviceName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveNewDeviceName();
       }
-      modalBackdrop.style.display = 'none';
     });
   }
 
@@ -149,17 +158,22 @@
   }
   setInterval(sendBackendHeartbeat, 4 * 60 * 1000);
 
-  // WebRTC Configuration
+  // WebRTC Configuration (Multi-STUN with ICE pre-gathering pool)
   const rtcConfig = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
       { urls: 'stun:global.stun.twilio.com:3478' }
-    ]
+    ],
+    iceCandidatePoolSize: 10
   };
 
   const peers = new Map(); // targetId -> { pc, dc, name, device, pendingCandidates: [] }
+  const earlyCandidates = new Map(); // senderId -> candidate[] (catches candidates arriving before offer)
 
   // Join Signaling Room
   socket.on('connect', () => {
@@ -226,6 +240,22 @@
     updateScannerState();
   });
 
+  // Real-time peer name update broadcast
+  socket.on('peer:updated', (updatedPeer) => {
+    if (peers.has(updatedPeer.id)) {
+      const p = peers.get(updatedPeer.id);
+      p.name = updatedPeer.name;
+    }
+    const pin = document.getElementById('pin-' + updatedPeer.id);
+    if (pin) {
+      const nameEl = pin.querySelector('.peer-pin-name');
+      if (nameEl) nameEl.textContent = updatedPeer.name;
+      const avatarEl = pin.querySelector('.peer-pin-avatar');
+      if (avatarEl) avatarEl.setAttribute('title', `${updatedPeer.name} (${updatedPeer.device || 'Peer'})`);
+    }
+    showToast(`Peer updated name: ${updatedPeer.name} ✎`);
+  });
+
   // Peer disconnected
   socket.on('peer:left', (peerId) => {
     const pin = document.getElementById('pin-' + peerId);
@@ -240,6 +270,7 @@
       }
       peers.delete(peerId);
     }
+    earlyCandidates.delete(peerId);
     showToast('A peer disconnected');
     updateScannerState();
   });
@@ -252,14 +283,20 @@
     }
     await peer.pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-    // Process queued candidates
-    if (peer.pendingCandidates && peer.pendingCandidates.length > 0) {
-      for (const cand of peer.pendingCandidates) {
-        try {
-          await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
-        } catch (err) {}
+    // Process queued early candidates and pending candidates
+    const allPending = [
+      ...(earlyCandidates.get(senderId) || []),
+      ...(peer.pendingCandidates || [])
+    ];
+    peer.pendingCandidates = [];
+    earlyCandidates.delete(senderId);
+
+    for (const cand of allPending) {
+      try {
+        await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
+      } catch (err) {
+        console.warn('ICE add error:', err);
       }
-      peer.pendingCandidates = [];
     }
 
     const answer = await peer.pc.createAnswer();
@@ -273,29 +310,42 @@
       await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
 
       // Process queued candidates
-      if (peer.pendingCandidates && peer.pendingCandidates.length > 0) {
-        for (const cand of peer.pendingCandidates) {
-          try {
-            await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
-          } catch (err) {}
+      const allPending = [
+        ...(earlyCandidates.get(senderId) || []),
+        ...(peer.pendingCandidates || [])
+      ];
+      peer.pendingCandidates = [];
+      earlyCandidates.delete(senderId);
+
+      for (const cand of allPending) {
+        try {
+          await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (err) {
+          console.warn('ICE add error:', err);
         }
-        peer.pendingCandidates = [];
       }
     }
   });
 
   socket.on('signal:candidate', async ({ senderId, candidate }) => {
+    if (!candidate) return;
     const peer = peers.get(senderId);
-    if (peer && candidate) {
+    if (peer) {
       if (peer.pc.remoteDescription && peer.pc.remoteDescription.type) {
         try {
           await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
         } catch (err) {
-          console.error('ICE Candidate error', err);
+          console.warn('ICE Candidate error', err);
         }
       } else {
         peer.pendingCandidates.push(candidate);
       }
+    } else {
+      // Store in earlyCandidates queue until offer is received
+      if (!earlyCandidates.has(senderId)) {
+        earlyCandidates.set(senderId, []);
+      }
+      earlyCandidates.get(senderId).push(candidate);
     }
   });
 
@@ -314,6 +364,24 @@
       if (e.candidate) {
         socket.emit('signal:candidate', { targetId, candidate: e.candidate });
       }
+    };
+
+    // Auto-recover on ICE glitches
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE Connection state [${targetId}]:`, pc.iceConnectionState);
+      if (pc.iceConnectionState === 'failed') {
+        console.warn('ICE connection failed. Triggering ICE restart...');
+        if (isInitiator && pc.restartIce) {
+          try {
+            pc.restartIce();
+            pc.createOffer({ iceRestart: true }).then(offer => {
+              pc.setLocalDescription(offer);
+              socket.emit('signal:offer', { targetId, offer });
+            }).catch(() => {});
+          } catch (_) {}
+        }
+      }
+      updateScannerState();
     };
 
     if (isInitiator) {
@@ -455,16 +523,38 @@
       return;
     }
 
-    // Filter peers that have an open DataChannel
+    if (peers.size === 0) {
+      showToast('⚠️ No other devices in this room yet. Share the invite link to connect!');
+      return;
+    }
+
+    // Filter peers that have an open or connecting DataChannel
     const activePeers = [];
-    peers.forEach(p => {
-      if (p.dc && p.dc.readyState === 'open') {
-        activePeers.push(p);
+    for (const [, p] of peers.entries()) {
+      if (p.dc) {
+        if (p.dc.readyState === 'open') {
+          activePeers.push(p);
+        } else if (p.dc.readyState === 'connecting') {
+          // Wait up to 3.5s for DataChannel handshake to finalize
+          hudStatus.textContent = 'Connecting direct P2P tunnel...';
+          await new Promise(resolve => {
+            const timer = setTimeout(resolve, 3500);
+            const onOpen = () => {
+              clearTimeout(timer);
+              p.dc.removeEventListener('open', onOpen);
+              resolve();
+            };
+            p.dc.addEventListener('open', onOpen);
+          });
+          if (p.dc.readyState === 'open') {
+            activePeers.push(p);
+          }
+        }
       }
-    });
+    }
 
     if (activePeers.length === 0) {
-      alert('No connected peers found with an open DataChannel. Make sure the other device is in this room.');
+      showToast('⚠️ P2P tunnel establishing with device. Please tap Choose Files again in 2 seconds.');
       return;
     }
 
