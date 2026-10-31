@@ -45,7 +45,8 @@ html {
 }
 
 body {
-  width: 100vw;
+  width: 100%;
+  max-width: 100%;
   min-height: 100vh;
   overflow-x: hidden;
   font-family: var(--font-sans);
@@ -1984,13 +1985,16 @@ body {
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   z-index: 2000;
   pointer-events: none;
+  width: calc(100% - 32px);
+  max-width: 420px;
 }
 
 .toast {
-  padding: 11px 20px;
+  padding: 10px 18px;
   border-radius: 14px;
   background: rgba(10, 16, 30, 0.96);
   color: #F8FAFC;
@@ -1999,7 +2003,9 @@ body {
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15);
   animation: toastIn 0.3s var(--ease-spring);
   pointer-events: auto;
-  white-space: nowrap;
+  text-align: center;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 @keyframes toastIn {
@@ -2013,11 +2019,14 @@ body {
 }
 
 /* ==========================================================
-   MOBILE & TABLET RESPONSIVE SYSTEM
+   COMPREHENSIVE MULTI-DEVICE RESPONSIVE SYSTEM
    ========================================================== */
+
+/* TABLETS & MID-SIZE SCREENS (<= 1024px) */
 @media (max-width: 1024px) {
   .transfer-hub-grid {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
   .steps-container, .features-cards-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2029,17 +2038,6 @@ body {
     max-width: 100%;
     width: 100%;
   }
-}
-
-@media (max-width: 1024px) {
-  /* Header Mobile / Tablet */
-  .app-header {
-    top: 8px;
-    width: calc(100% - 20px);
-    margin: 8px auto 0;
-    padding: 8px 14px;
-    border-radius: 16px;
-  }
 
   .nav-tabs {
     display: none;
@@ -2049,81 +2047,113 @@ body {
     display: flex;
   }
 
+  .app-header {
+    top: 8px;
+    width: calc(100% - 24px);
+    margin: 8px auto 0;
+    padding: 8px 16px;
+    border-radius: 16px;
+  }
+
+  .network-bar-section,
+  .transfer-hub-grid,
+  .guide-section,
+  .features-section,
+  .faq-section,
+  .footer-wrap {
+    width: calc(100% - 24px);
+  }
+}
+
+/* SMARTPHONES & SMALL TABLETS (<= 768px) */
+@media (max-width: 768px) {
+  .header-top-row {
+    gap: 8px;
+  }
+
   .header-actions {
     gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .room-chip-label {
+    display: none;
   }
 
   .room-chip {
     padding: 6px 10px;
     font-size: 11px;
+    gap: 5px;
+  }
+
+  .room-chip-code {
+    font-size: 12px;
   }
 
   .btn-glow {
-    padding: 6px 12px;
+    padding: 6px 11px;
     font-size: 11px;
-  }
-
-  .btn-glow .btn-text {
-    display: inline;
   }
 
   .device-badge {
-    padding: 6px 8px;
+    padding: 6px 9px;
     font-size: 11px;
+    max-width: 110px;
   }
 
-  /* Network Bar */
-  .network-bar-section {
-    width: calc(100% - 20px);
-    margin: 12px auto 0;
+  .device-label-text {
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .network-bar-card {
-    padding: 10px 14px;
-    gap: 10px;
+    padding: 10px 12px;
+    gap: 8px;
   }
 
   .room-input-group {
     width: 100%;
-    min-width: 100%;
     gap: 6px;
-  }
-
-  .search-input-box {
-    max-width: none;
   }
 
   .wifi-banner {
     width: 100%;
     justify-content: space-between;
+    gap: 8px;
   }
 
-  /* Hub */
-  .transfer-hub-grid {
-    width: calc(100% - 20px);
-    margin: 16px auto 0;
-    gap: 16px;
-  }
-
-  /* Radar Mobile Scaling */
   .radar-card {
-    padding: 20px 14px 16px;
+    padding: 18px 14px 16px;
     border-radius: 20px;
   }
 
-  .sonar-viewport {
-    width: 240px;
-    height: 240px;
-    margin: 6px auto 14px;
+  .radar-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 
-  .ring-inner { width: 70px; height: 70px; }
-  .ring-mid   { width: 140px; height: 140px; }
-  .ring-outer { width: 210px; height: 210px; }
+  .sonar-viewport {
+    width: min(250px, 72vw);
+    height: min(250px, 72vw);
+    margin: 8px auto 14px;
+  }
+
+  .ring-inner { width: 33%; height: 33%; }
+  .ring-mid   { width: 66%; height: 66%; }
+  .ring-outer { width: 95%; height: 95%; }
 
   .center-node-core {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
   }
 
   .center-node-core svg {
@@ -2136,82 +2166,319 @@ body {
     height: 36px;
   }
 
-  .peer-pin-name {
-    font-size: 10px;
-    padding: 2px 6px;
-  }
-
-  /* Dropzone Mobile */
   .dropzone-portal {
-    padding: 24px 14px;
+    padding: 24px 14px 20px;
     border-radius: 20px;
   }
 
-  .portal-icon-box {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 10px;
+  .portal-rings {
+    display: none;
   }
 
-  .portal-title {
-    font-size: 16px;
+  .btn-choose-files {
+    width: 100%;
+    max-width: 270px;
+    justify-content: center;
+    padding: 11px 18px;
+    font-size: 14px;
   }
 
-  .portal-subtitle {
-    font-size: 12px;
-    margin-bottom: 12px;
-  }
-
-  .tech-pill {
-    font-size: 10px;
-    padding: 3px 8px;
-  }
-
-  /* Guide, Features & FAQ Mobile */
-  .guide-section, .features-section, .faq-section {
-    width: calc(100% - 20px);
-    margin: 40px auto 20px;
-  }
-
-  .guide-heading {
-    font-size: 22px;
-  }
-
-  .steps-container, .features-cards-grid, .faq-accordion-grid, .tech-specs-grid {
+  .steps-container,
+  .features-cards-grid,
+  .faq-accordion-grid,
+  .tech-specs-grid {
     grid-template-columns: 1fr;
     gap: 14px;
   }
 
   .step-box, .f-card, .faq-card, .architecture-card {
-    padding: 20px 16px;
-    border-radius: 18px;
+    padding: 18px 14px;
+    border-radius: 16px;
   }
 
   .footer-wrap {
-    width: calc(100% - 20px);
     flex-direction: column;
     text-align: center;
     gap: 12px;
   }
 }
 
+/* COMPACT PHONES (<= 480px: iPhone 13/14/15/16, Android) */
 @media (max-width: 480px) {
-  .brand-title {
-    font-size: 16px;
+  .app-header {
+    width: calc(100% - 16px);
+    margin: 6px auto 0;
+    padding: 7px 10px;
+    border-radius: 14px;
   }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .brand-title {
+    font-size: 15px;
+  }
+
   .brand-tag {
     display: none;
   }
-  .btn-icon-secondary span {
-    display: none;
+
+  .header-actions {
+    gap: 5px;
   }
-  .btn-icon-secondary {
-    padding: 8px;
+
+  .relay-chip {
+    padding: 4px 7px;
+    font-size: 10px;
   }
+
+  .relay-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .room-chip {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .room-chip-code {
+    font-size: 11px;
+  }
+
+  .btn-glow {
+    padding: 6px 9px;
+  }
+
   .btn-glow .btn-text {
     display: none;
   }
-  .btn-glow {
+
+  .device-badge {
+    padding: 5px 8px;
+    font-size: 10px;
+    max-width: 80px;
+  }
+
+  .device-label-text {
+    max-width: 55px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .network-bar-section,
+  .transfer-hub-grid,
+  .guide-section,
+  .features-section,
+  .faq-section,
+  .footer-wrap {
+    width: calc(100% - 16px);
+  }
+
+  .network-bar-card {
+    padding: 8px 10px;
+    border-radius: 16px;
+  }
+
+  .search-input-box input {
+    font-size: 12px;
+    padding: 8px 58px 8px 30px;
+  }
+
+  .btn-inline-join {
+    right: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+
+  .btn-icon-secondary {
+    padding: 7px 9px;
+  }
+
+  .btn-icon-secondary span {
+    display: none;
+  }
+
+  .wifi-banner {
     padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .wifi-url {
+    font-size: 11px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .radar-card {
+    padding: 14px 10px 12px;
+    border-radius: 18px;
+  }
+
+  .radar-scan-counter {
+    font-size: 11px;
+  }
+
+  .sonar-viewport {
+    width: min(220px, 68vw);
+    height: min(220px, 68vw);
+    margin: 6px auto 12px;
+  }
+
+  .dropzone-portal {
+    padding: 20px 10px 16px;
+    border-radius: 18px;
+  }
+
+  .portal-icon-box {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 6px;
+  }
+
+  .portal-icon-box svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portal-title {
+    font-size: 15px;
+  }
+
+  .portal-subtitle {
+    font-size: 11.5px;
+    margin-bottom: 10px;
+  }
+
+  .btn-choose-files {
+    padding: 10px 16px;
+    font-size: 13px;
+    max-width: 240px;
+  }
+
+  .portal-pills {
+    gap: 4px;
+  }
+
+  .tech-pill {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .telemetry-hud {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .hud-filename {
+    max-width: 110px;
+    font-size: 12px;
+  }
+
+  .hud-file-icon {
+    font-size: 22px;
+  }
+
+  .hud-speed-badge {
+    font-size: 11px;
+  }
+
+  .hud-percent-badge {
+    font-size: 13px;
+  }
+
+  .activity-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .history-item {
+    padding: 7px 9px;
+    font-size: 11px;
+  }
+
+  .history-item-name {
+    max-width: 120px;
+    font-size: 11.5px;
+  }
+
+  .guide-heading {
+    font-size: 19px;
+  }
+
+  .guide-sub {
+    font-size: 12px;
+  }
+
+  .modal-box {
+    width: calc(100% - 24px);
+    padding: 16px 12px;
+    border-radius: 16px;
+  }
+
+  .modal-heading {
+    font-size: 16px;
+  }
+
+  .modal-text-input {
+    font-size: 13px;
+    padding: 9px 12px;
+  }
+}
+
+/* ULTRA-COMPACT / FOLDABLE COVER SCREENS (<= 360px: iPhone SE, Galaxy Z Flip cover) */
+@media (max-width: 360px) {
+  .app-header {
+    width: calc(100% - 10px);
+    padding: 6px 8px;
+  }
+
+  .brand-title {
+    font-size: 13.5px;
+  }
+
+  .brand-logo {
+    width: 26px;
+    height: 26px;
+  }
+
+  .device-badge {
+    display: none;
+  }
+
+  .relay-chip {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .room-chip {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .btn-glow {
+    padding: 5px 8px;
+  }
+
+  .sonar-viewport {
+    width: 190px;
+    height: 190px;
+  }
+
+  .center-node-core {
+    width: 32px;
+    height: 32px;
+  }
+
+  .center-node-core svg {
+    width: 16px;
+    height: 16px;
   }
 }
