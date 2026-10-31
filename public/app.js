@@ -132,12 +132,15 @@
   // Always connect to Thakur Boot House backend so every device (PC, Mobile, Vercel)
   // joins the exact same signaling room regardless of where frontend is loaded from.
   const backendParam = urlParams.get('backend');
-  const socketUrl = (backendParam === 'local') ? '' : THAKUR_BACKEND_URL;
+  let socketUrl = (backendParam === 'local') ? '' : THAKUR_BACKEND_URL;
 
-  const socket = io(socketUrl, {
-    transports: ['websocket', 'polling'],
-    withCredentials: false,
-    timeout: 20000,
+  // Polling-first handshake with auto WebSocket promotion (guaranteed mobile carrier & Wi-Fi compatibility)
+  let socket = io(socketUrl, {
+    transports: ['polling', 'websocket'],
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    timeout: 12000,
   });
 
   // Client-side keep-alive heartbeat to Thakur Boot House backend (every 4 mins)
@@ -171,13 +174,28 @@
     updateScannerState();
   });
 
+  let failoverAttempts = 0;
   socket.on('connect_error', (err) => {
-    console.error('Socket connection error:', err);
+    console.warn('Socket connection attempt notice:', err.message);
     if (relayDot) relayDot.className = 'relay-dot connecting';
     if (relayText) relayText.textContent = 'CONNECTING';
     if (scannerStatus) {
-      scannerStatus.textContent = `Signaling relay connecting... (${err.message || 'Please wait'})`;
+      scannerStatus.textContent = `Connecting to mesh signaling... (${err.message || 'Retrying'})`;
       scannerStatus.style.color = '#F59E0B';
+    }
+
+    // Auto-failover: If cloud signaling is blocked or timing out on mobile Wi-Fi,
+    // seamlessly switch to local Node relay on the host machine
+    failoverAttempts++;
+    if (failoverAttempts >= 2 && socketUrl && (window.location.port === '3003' || window.location.port === '5050')) {
+      console.warn('Switching to local network relay server...');
+      socketUrl = '';
+      failoverAttempts = 0;
+      try {
+        socket.disconnect();
+        socket.io.uri = window.location.origin;
+        socket.connect();
+      } catch (_) {}
     }
   });
 

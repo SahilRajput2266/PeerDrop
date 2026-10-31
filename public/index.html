@@ -530,8 +530,13 @@
     </div>
   </div>
 
-  <!-- Socket.IO Client (CDN with fallback) -->
+  <!-- Socket.IO Client (CDN with local fallback) -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    if (typeof io === 'undefined') {
+      document.write('<script src="/socket.io/socket.io.js"><\/script>');
+    }
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
