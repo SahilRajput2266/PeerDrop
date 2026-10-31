@@ -165,17 +165,16 @@
       clientName: deviceName + ' #' + socket.id.substring(0, 4),
       device: deviceName
     });
-    const relayName = socketUrl ? 'Thakur Server (Render)' : 'Local Relay';
     if (relayDot) relayDot.className = 'relay-dot connected';
-    if (relayText) relayText.textContent = `Live: ${relayName}`;
-    showToast(`Connected to room: ${roomId} (${relayName}) ✨`);
+    if (relayText) relayText.textContent = 'LIVE';
+    showToast(`Connected to room: ${roomId} (LIVE) ✨`);
     updateScannerState();
   });
 
   socket.on('connect_error', (err) => {
     console.error('Socket connection error:', err);
     if (relayDot) relayDot.className = 'relay-dot connecting';
-    if (relayText) relayText.textContent = 'Connecting...';
+    if (relayText) relayText.textContent = 'CONNECTING';
     if (scannerStatus) {
       scannerStatus.textContent = `Signaling relay connecting... (${err.message || 'Please wait'})`;
       scannerStatus.style.color = '#F59E0B';
@@ -185,7 +184,7 @@
   socket.on('disconnect', (reason) => {
     console.warn('Socket disconnected:', reason);
     if (relayDot) relayDot.className = 'relay-dot disconnected';
-    if (relayText) relayText.textContent = 'Disconnected';
+    if (relayText) relayText.textContent = 'OFFLINE';
     if (scannerStatus) {
       scannerStatus.textContent = 'Disconnected from signaling relay. Reconnecting...';
       scannerStatus.style.color = '#F59E0B';
