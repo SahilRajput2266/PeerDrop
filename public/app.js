@@ -26,6 +26,9 @@
   let serverPort = window.location.port || '3003';
 
   // UI Elements
+  const relayChip = document.getElementById('relayChip');
+  const relayDot = document.getElementById('relayDot');
+  const relayText = document.getElementById('relayText');
   const roomCodeDisplay = document.getElementById('roomCodeDisplay');
   const roomPill = document.getElementById('roomPill');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
@@ -168,13 +171,17 @@
       clientName: deviceName + ' #' + socket.id.substring(0, 4),
       device: deviceName
     });
-    const relayName = socketUrl ? 'Render Cloud' : 'Local';
+    const relayName = socketUrl ? 'Render Cloud' : 'Local Relay';
+    if (relayDot) relayDot.className = 'relay-dot connected';
+    if (relayText) relayText.textContent = `Live: ${relayName}`;
     showToast(`Connected to room: ${roomId} (${relayName}) ✨`);
     updateScannerState();
   });
 
   socket.on('connect_error', (err) => {
     console.error('Socket connection error:', err);
+    if (relayDot) relayDot.className = 'relay-dot connecting';
+    if (relayText) relayText.textContent = 'Connecting...';
     if (scannerStatus) {
       scannerStatus.textContent = `Signaling relay connecting... (${err.message || 'Please wait'})`;
       scannerStatus.style.color = '#F59E0B';
@@ -183,6 +190,8 @@
 
   socket.on('disconnect', (reason) => {
     console.warn('Socket disconnected:', reason);
+    if (relayDot) relayDot.className = 'relay-dot disconnected';
+    if (relayText) relayText.textContent = 'Disconnected';
     if (scannerStatus) {
       scannerStatus.textContent = 'Disconnected from signaling relay. Reconnecting...';
       scannerStatus.style.color = '#F59E0B';
@@ -613,8 +622,7 @@
     }
   }
 
-  // Drag & Drop Setup (sequential handling of multiple files)
-  dropzone.addEventListener('click', () => fileInput.click());
+  // Drag & Drop / File Selection Setup (sequential handling of multiple files)
   fileInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = '';
@@ -679,14 +687,31 @@
     copyText(roomId, `Room Code "${roomId}" copied 📋`);
   });
 
-  // Join Room by typing custom ID
+  // Join Room by typing custom ID (supports room code, 4-digit pin, or pasted invite URL)
   function joinCustomRoom() {
-    const entered = (inputCustomRoom.value || '').trim().toUpperCase();
+    let entered = (inputCustomRoom.value || '').trim();
     if (!entered) {
       showToast('⚠️ Please enter a room ID');
       inputCustomRoom.focus();
       return;
     }
+
+    // Handle pasted full URLs (e.g. https://peerdrop.vercel.app/?room=PD-1234 or LAN links)
+    try {
+      if (entered.includes('?room=') || entered.startsWith('http://') || entered.startsWith('https://')) {
+        const parsed = new URL(entered, window.location.origin);
+        const r = parsed.searchParams.get('room');
+        if (r) entered = r;
+      }
+    } catch (_) {}
+
+    entered = entered.trim().toUpperCase();
+
+    // Auto-prefix 4 numeric digits like "1234" to "PD-1234"
+    if (/^\d{4}$/.test(entered)) {
+      entered = 'PD-' + entered;
+    }
+
     if (entered === roomId) {
       showToast(`ℹ️ Already in room: ${roomId}`);
       return;

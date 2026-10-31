@@ -61,6 +61,11 @@
 
         <!-- Room & Device Controls -->
         <div class="header-actions">
+          <div class="relay-chip" id="relayChip" title="Signaling Relay Server Connection">
+            <span class="relay-dot" id="relayDot"></span>
+            <span class="relay-text" id="relayText">Connecting...</span>
+          </div>
+
           <div class="room-chip" id="roomPill" title="Click to copy Room Code">
             <span class="room-chip-dot"></span>
             <span class="room-chip-label">ROOM:</span>
@@ -201,7 +206,7 @@
       <section class="transfer-control-card">
         <!-- Holographic Dropzone -->
         <div class="dropzone-portal" id="dropzone">
-          <input type="file" id="fileInput" multiple style="display: none;" />
+          <input type="file" id="fileInput" multiple class="file-input-overlay" title="Click or tap to choose files" />
           <div class="portal-rings">
             <div class="portal-ring ring-a"></div>
             <div class="portal-ring ring-b"></div>
@@ -214,7 +219,10 @@
             </svg>
           </div>
           <h3 class="portal-title">Drop Files to Transfer</h3>
-          <p class="portal-subtitle">Drag & drop any file here or click to browse. Direct encrypted streaming.</p>
+          <p class="portal-subtitle">Drag & drop any file here, or tap below to browse from your device.</p>
+          <div class="portal-action-btn">
+            <span class="btn-choose-files">📁 Choose Files / Photos</span>
+          </div>
           <div class="portal-pills">
             <span class="tech-pill">⚡ Zero Server Storage</span>
             <span class="tech-pill">🔒 256-bit DTLS Encrypted</span>
