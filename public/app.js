@@ -122,22 +122,39 @@
     })
     .catch(() => {});
 
-  // Socket Connection: Uses Render backend (thakurboothouse.onrender.com) when hosted on Vercel or remote
+  // Socket Connection URL resolution:
   const RENDER_BACKEND_URL = 'https://thakurboothouse.onrender.com';
-  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const socketUrl = window.PEERDROP_BACKEND_URL || 
-    (isLocalHost && (window.location.port === '3003' || window.location.port === '3000') 
-      ? '' 
-      : RENDER_BACKEND_URL);
+  
+  // Check if hosted on local Node.js server (localhost, 127.0.0.1, or local Wi-Fi LAN IP with port 3003)
+  const isLocalServer = (window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' || 
+                         window.location.hostname.startsWith('192.168.') ||
+                         window.location.hostname.startsWith('10.')) && 
+                        (window.location.port === '3003' || window.location.port === '5050');
+
+  // Allow explicit override via ?backend=render or ?backend=local
+  const backendParam = urlParams.get('backend');
+  let socketUrl = RENDER_BACKEND_URL;
+  if (backendParam === 'local') {
+    socketUrl = '';
+  } else if (backendParam === 'render') {
+    socketUrl = RENDER_BACKEND_URL;
+  } else if (isLocalServer) {
+    socketUrl = ''; // Same local server origin
+  }
 
   const socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
+    withCredentials: false,
+    timeout: 20000,
   });
 
   // WebRTC Configuration
   const rtcConfig = {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' }
     ]
   };
@@ -151,7 +168,25 @@
       clientName: deviceName + ' #' + socket.id.substring(0, 4),
       device: deviceName
     });
-    showToast(`Connected to room: ${roomId} ✨`);
+    const relayName = socketUrl ? 'Render Cloud' : 'Local';
+    showToast(`Connected to room: ${roomId} (${relayName}) ✨`);
+    updateScannerState();
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err);
+    if (scannerStatus) {
+      scannerStatus.textContent = `Signaling relay connecting... (${err.message || 'Please wait'})`;
+      scannerStatus.style.color = '#F59E0B';
+    }
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.warn('Socket disconnected:', reason);
+    if (scannerStatus) {
+      scannerStatus.textContent = 'Disconnected from signaling relay. Reconnecting...';
+      scannerStatus.style.color = '#F59E0B';
+    }
   });
 
   // Received list of existing peers in room
