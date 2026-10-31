@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="favBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#030712"/>
+    </linearGradient>
+    <linearGradient id="favCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="60%" stop-color="#0EA5E9"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="favBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#818CF8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="32" height="32" rx="8" fill="url(#favBg)"/>
+  <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7.25" fill="none" stroke="url(#favBorder)" stroke-width="1.5" stroke-opacity="0.8"/>
+
+  <!-- Upper Radiating Sonar Waves -->
+  <path d="M 7 11 A 10 10 0 0 1 25 11" fill="none" stroke="#38BDF8" stroke-width="1.8" stroke-linecap="round" stroke-opacity="0.6"/>
+  <path d="M 10 14 A 6.5 6.5 0 0 1 22 14" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-opacity="0.9"/>
+
+  <!-- Drop & Transmit Core -->
+  <path d="M 16 8 C 11.5 14 11 18.5 13.5 21.5 C 14.5 22.8 17.5 22.8 18.5 21.5 C 21 18.5 20.5 14 16 8 Z" fill="url(#favCyan)"/>
+  <circle cx="16" cy="17" r="2.2" fill="#FFFFFF"/>
+
+  <!-- Drop Beacon Ray -->
+  <line x1="16" y1="24" x2="16" y2="26" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="16" cy="28.5" r="1.2" fill="#10B981"/>
+</svg>

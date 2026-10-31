@@ -165,19 +165,23 @@ body {
 .brand-logo {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #0284C7, #38BDF8);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FFFFFF;
-  box-shadow: 0 4px 18px rgba(56, 189, 248, 0.45);
-  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s ease;
+  filter: drop-shadow(0 4px 14px rgba(56, 189, 248, 0.4));
+  transition: transform 0.3s var(--ease-spring), filter 0.3s ease;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
 .brand:hover .brand-logo {
-  transform: scale(1.06) rotate(-3deg);
-  box-shadow: 0 6px 24px rgba(56, 189, 248, 0.65);
+  transform: scale(1.08) translateY(-1px);
+  filter: drop-shadow(0 6px 20px rgba(56, 189, 248, 0.65));
 }
 
 .brand-title {

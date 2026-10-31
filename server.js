@@ -11,6 +11,13 @@ const server = http.createServer(app);
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Favicon fallback endpoint
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favicon.svg'), {
+    headers: { 'Content-Type': 'image/svg+xml' }
+  });
+});
+
 // Lightweight Keep-Alive ping endpoints for Render / uptime monitors
 app.get('/ping', (req, res) => {
   res.status(200).send('pong');
