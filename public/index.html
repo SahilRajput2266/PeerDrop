@@ -2,145 +2,531 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>PeerDrop — P2P Encrypted Zero-Knowledge File Sharing</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="mesh-bg"></div>
+  <!-- Ambient Animated Lighting -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+  <div class="mesh-grid"></div>
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="brand">
-      <div class="brand-logo">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-          <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-          <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-          <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-          <line x1="12" y1="22.08" x2="12" y2="12"></line>
-        </svg>
-      </div>
-      <div>
-        <h1 class="brand-title">PeerDrop</h1>
-        <div class="brand-sub">Zero-Knowledge P2P Mesh</div>
-      </div>
-    </div>
+  <!-- Main App Shell -->
+  <div class="app-layout">
 
-    <!-- Active Room Badge & Share -->
-    <div class="header-center">
-      <div class="room-pill">
-        <span class="room-label">ROOM:</span>
-        <span id="roomCodeDisplay" class="room-code">PD-MESH</span>
-      </div>
-      <button id="btnCopyInvite" class="btn-action" title="Copy Invite Link">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="18" cy="5" r="3"></circle>
-          <circle cx="6" cy="12" r="3"></circle>
-          <circle cx="18" cy="19" r="3"></circle>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-        </svg>
-        <span>Invite Peer</span>
-      </button>
-    </div>
+    <!-- Header Navigation -->
+    <header class="app-header">
+      <div class="header-top-row">
+        <a href="#transferHub" class="brand">
+          <div class="brand-logo">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+              <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+              <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+          </div>
+          <div class="brand-info">
+            <h1 class="brand-title">PeerDrop</h1>
+            <div class="brand-tag">P2P MESH v1.0</div>
+          </div>
+        </a>
 
-    <!-- Local Device Indicator -->
-    <div class="header-right">
-      <div class="device-pill">
-        <span class="pulse-indicator"></span>
-        <span id="localDeviceLabel">Detecting Device...</span>
-      </div>
-    </div>
-  </header>
+        <!-- Desktop Navigation Tabs -->
+        <nav class="nav-tabs">
+          <a href="#transferHub" class="nav-tab active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            <span>Transfer</span>
+          </a>
+          <a href="#howItWorks" class="nav-tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>How It Works</span>
+          </a>
+          <a href="#featuresSection" class="nav-tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span>Features</span>
+          </a>
+          <a href="#faqSection" class="nav-tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+            <span>FAQ</span>
+          </a>
+        </nav>
 
-  <!-- Main Hub -->
-  <main class="main-container">
-    
-    <!-- Radar Scanner Area -->
-    <section class="radar-section">
-      <div class="radar-wrapper" id="radarWrapper">
-        <div class="radar-circle circle-1"></div>
-        <div class="radar-circle circle-2"></div>
-        <div class="radar-circle circle-3"></div>
-        <div class="radar-sweep"></div>
-        <div class="radar-center-node">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
+        <!-- Room & Device Controls -->
+        <div class="header-actions">
+          <div class="room-chip" id="roomPill" title="Click to copy Room Code">
+            <span class="room-chip-dot"></span>
+            <span class="room-chip-label">ROOM:</span>
+            <span id="roomCodeDisplay" class="room-chip-code">PD-MESH</span>
+            <svg class="room-copy-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </div>
+
+          <button id="btnCopyInvite" class="btn-glow" title="Copy Invite Link for other devices">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            <span class="btn-text">Share Link</span>
+          </button>
+
+          <div class="device-badge" id="devicePill" title="Click to rename your device">
+            <span class="device-status-pulse"></span>
+            <span id="localDeviceLabel" class="device-label-text">Detecting Device...</span>
+            <span class="device-edit-icon">✎</span>
+          </div>
         </div>
-
-        <!-- Dynamic Peer Node Pins -->
-        <div id="peerPinsContainer" class="peer-pins-container"></div>
       </div>
 
-      <div class="scanner-status" id="scannerStatus">
-        Scanning for peers in room...
+      <!-- Mobile Navigation Scroll Row -->
+      <nav class="mobile-nav-bar">
+        <a href="#transferHub" class="m-tab active">Transfer</a>
+        <a href="#howItWorks" class="m-tab">How It Works</a>
+        <a href="#featuresSection" class="m-tab">Features</a>
+        <a href="#faqSection" class="m-tab">FAQ</a>
+      </nav>
+    </header>
+
+    <!-- Room Control & Local Network Bar -->
+    <section class="network-bar-section">
+      <div class="network-bar-card">
+        <!-- Join Room Form with Integrated Action -->
+        <form id="formJoinRoom" class="room-input-group" onsubmit="return false;">
+          <div class="search-input-box">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+              <polyline points="10 17 15 12 10 7"></polyline>
+              <line x1="15" y1="12" x2="3" y2="12"></line>
+            </svg>
+            <input 
+              type="text" 
+              id="inputCustomRoom" 
+              placeholder="Join room code (e.g. PD-1234)..." 
+              autocomplete="off" 
+              spellcheck="false" 
+              maxlength="30" 
+            />
+            <button type="submit" id="btnJoinRoom" class="btn-inline-join">
+              Join
+            </button>
+          </div>
+          <button type="button" id="btnNewRoom" class="btn-icon-secondary" title="Create a fresh random room">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>New Room</span>
+          </button>
+        </form>
+
+        <!-- Wi-Fi LAN Access Pill -->
+        <div class="wifi-banner" id="lanInfoPill" style="display: none;">
+          <div class="wifi-left">
+            <span class="wifi-pulse-dot"></span>
+            <span class="wifi-label">Local Wi-Fi:</span>
+            <code id="lanUrlDisplay" class="wifi-url" title="Click to copy Wi-Fi URL">http://...</code>
+          </div>
+          <button type="button" id="btnCopyLanUrl" class="btn-wifi-copy" title="Copy Wi-Fi URL">Copy URL</button>
+        </div>
       </div>
     </section>
 
-    <!-- Transfer Station & Dropzone -->
-    <section class="transfer-section">
-      <div class="dropzone" id="dropzone">
-        <input type="file" id="fileInput" multiple style="display: none;" />
-        <div class="dropzone-icon">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
+    <!-- Main Transfer Hub (Radar + Dropzone + History) -->
+    <main class="transfer-hub-grid" id="transferHub">
+      
+      <!-- Interactive Sonar Radar Section -->
+      <section class="radar-card">
+        <div class="radar-card-header">
+          <div class="header-pill-badge">
+            <span class="live-beacon"></span>
+            <span>SONAR RADAR MESH</span>
+          </div>
+          <div class="radar-scan-counter" id="scannerStatus">Scanning for peers in room...</div>
         </div>
-        <h3 class="dropzone-title">Drag & Drop Files Here</h3>
-        <p class="dropzone-sub">or click to browse from device. Direct encrypted P2P data channels.</p>
-        <div class="dropzone-badge">⚡ Zero Server Storage &bull; End-to-End Encrypted</div>
-      </div>
 
-      <!-- Active File Transfer HUD -->
-      <div class="transfer-hud" id="transferHud" style="display: none;">
-        <div class="hud-header">
-          <div class="file-details">
-            <span class="file-icon">📄</span>
-            <div>
-              <div class="file-name" id="hudFileName">file_name.zip</div>
-              <div class="file-size" id="hudFileSize">0 KB / 0 KB</div>
+        <div class="sonar-viewport" id="radarWrapper">
+          <!-- Animated Concentric Sonar Rings -->
+          <div class="sonar-wave wave-1"></div>
+          <div class="sonar-wave wave-2"></div>
+          <div class="sonar-wave wave-3"></div>
+          <div class="sonar-ring ring-inner"></div>
+          <div class="sonar-ring ring-mid"></div>
+          <div class="sonar-ring ring-outer"></div>
+
+          <!-- Crosshair Radar Grid Lines -->
+          <div class="radar-axis axis-horizontal"></div>
+          <div class="radar-axis axis-vertical"></div>
+          <div class="radar-axis axis-diagonal-1"></div>
+          <div class="radar-axis axis-diagonal-2"></div>
+
+          <!-- Rotating Sonar Sweep Beam -->
+          <div class="radar-beam-sweep"></div>
+
+          <!-- Center Node (Your Device) -->
+          <div class="center-radar-node" title="Your Device">
+            <div class="center-node-pulse"></div>
+            <div class="center-node-core">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
+            <span class="center-node-label">You</span>
+          </div>
+
+          <!-- Dynamic Peer Node Pins -->
+          <div id="peerPinsContainer" class="peer-pins-layer"></div>
+        </div>
+
+        <div class="radar-footer-tip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          <span>Open this room on another device or connect over Wi-Fi to establish a direct P2P tunnel.</span>
+        </div>
+      </section>
+
+      <!-- Dropzone & Transfer Center -->
+      <section class="transfer-control-card">
+        <!-- Holographic Dropzone -->
+        <div class="dropzone-portal" id="dropzone">
+          <input type="file" id="fileInput" multiple style="display: none;" />
+          <div class="portal-rings">
+            <div class="portal-ring ring-a"></div>
+            <div class="portal-ring ring-b"></div>
+          </div>
+          <div class="portal-icon-box">
+            <svg class="portal-upload-svg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <h3 class="portal-title">Drop Files to Transfer</h3>
+          <p class="portal-subtitle">Drag & drop any file here or click to browse. Direct encrypted streaming.</p>
+          <div class="portal-pills">
+            <span class="tech-pill">⚡ Zero Server Storage</span>
+            <span class="tech-pill">🔒 256-bit DTLS Encrypted</span>
+            <span class="tech-pill">🚀 No File Size Limit</span>
+          </div>
+        </div>
+
+        <!-- Real-Time Telemetry Transfer HUD -->
+        <div class="telemetry-hud" id="transferHud" style="display: none;">
+          <div class="hud-top">
+            <div class="hud-file-info">
+              <div class="hud-file-icon">📄</div>
+              <div class="hud-file-texts">
+                <div class="hud-filename" id="hudFileName">file_name.zip</div>
+                <div class="hud-filesize" id="hudFileSize">0 KB / 0 KB</div>
+              </div>
+            </div>
+            <div class="hud-stats">
+              <span class="hud-speed-badge" id="hudSpeed">0 MB/s</span>
+              <span class="hud-percent-badge" id="hudPercent">0%</span>
             </div>
           </div>
-          <div class="hud-metrics">
-            <span class="transfer-speed" id="hudSpeed">0 MB/s</span>
-            <span class="transfer-pct" id="hudPercent">0%</span>
+
+          <div class="hud-meter-track">
+            <div class="hud-meter-bar" id="hudProgressFill" style="width: 0%;">
+              <span class="hud-bar-head"></span>
+            </div>
+          </div>
+
+          <div class="hud-bottom-row">
+            <div class="hud-status-indicator">
+              <span class="hud-status-dot"></span>
+              <span id="hudStatus">Streaming chunks over WebRTC DataChannel...</span>
+            </div>
           </div>
         </div>
 
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" id="hudProgressFill" style="width: 0%;"></div>
+        <!-- Persistent Session Activity Card -->
+        <div class="activity-card" id="historyPanel">
+          <div class="activity-header">
+            <div class="activity-title-group">
+              <h4 class="activity-title">Session Activity</h4>
+              <span class="activity-badge" id="historyCount">0 transfers</span>
+            </div>
+            <button type="button" id="btnHistoryClear" class="btn-clear-history" title="Clear transfer history">
+              Clear
+            </button>
+          </div>
+          <div class="activity-stream" id="historyList">
+            <div class="activity-empty-state" id="historyEmpty">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+              <span>No transfers recorded in this session. Connect a second device to begin.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- How It Works Section -->
+    <section class="guide-section" id="howItWorks">
+      <div class="guide-header">
+        <div class="guide-badge">HOW IT WORKS</div>
+        <h2 class="guide-heading">Peer-to-Peer Architecture Explained</h2>
+        <p class="guide-subhead">
+          PeerDrop establishes an encrypted, direct DataChannel connection between web browsers using WebRTC. Your file content never touches any cloud server or database.
+        </p>
+      </div>
+
+      <!-- 3 Step Visual Progression -->
+      <div class="steps-container">
+        <div class="step-box">
+          <div class="step-num-glow">01</div>
+          <div class="step-graphic">
+            <div class="graphic-icon-wrap">🔗</div>
+          </div>
+          <h3 class="step-box-title">Join the Same Room</h3>
+          <p class="step-box-text">
+            Open PeerDrop on both devices and enter the same Room ID (or click "Share Link"). If both devices are on the same Wi-Fi, open via the Wi-Fi LAN address for Gigabit transfer speeds.
+          </p>
         </div>
 
-        <div class="hud-footer">
-          <span id="hudStatus">Streaming chunks over WebRTC DataChannel...</span>
+        <div class="step-box">
+          <div class="step-num-glow">02</div>
+          <div class="step-graphic">
+            <div class="graphic-icon-wrap">📡</div>
+          </div>
+          <h3 class="step-box-title">Radar Auto-Discovery</h3>
+          <p class="step-box-text">
+            The lightweight Node.js signaling server handles initial handshake metadata (Session Description and ICE candidate exchange). Connected peers appear instantly on the sonar radar mesh.
+          </p>
+        </div>
+
+        <div class="step-box">
+          <div class="step-num-glow">03</div>
+          <div class="step-graphic">
+            <div class="graphic-icon-wrap">🚀</div>
+          </div>
+          <h3 class="step-box-title">Drag, Drop & Stream</h3>
+          <p class="step-box-text">
+            Drop any file to send. The transmission engine slices the file into 64 KB encrypted chunks, streams directly across the WebRTC tunnel, and triggers instant download on the receiver.
+          </p>
         </div>
       </div>
 
-      <!-- Transfer History Log -->
-      <div class="history-panel" id="historyPanel">
-        <h4 class="history-title">Session Activity</h4>
-        <div class="history-list" id="historyList">
-          <div class="history-empty">No transfers yet. Share the room link to connect a second device.</div>
+      <!-- Under the Hood Interactive Diagram Card -->
+      <div class="architecture-card">
+        <h3 class="arch-card-heading">Under the Hood: Network Pipeline</h3>
+        
+        <div class="pipeline-visual">
+          <div class="pipeline-node node-sender">
+            <div class="pipeline-avatar">💻</div>
+            <div class="pipeline-name">Device A (Sender)</div>
+            <div class="pipeline-detail">Browser Memory Stream</div>
+          </div>
+
+          <div class="pipeline-channels">
+            <div class="channel-track track-signaling">
+              <span class="track-pulse pulse-signaling"></span>
+              <span class="channel-text">1. WebSocket Signaling (Handshake Only)</span>
+            </div>
+            <div class="channel-track track-p2p">
+              <span class="track-pulse pulse-p2p"></span>
+              <span class="channel-text">2. Direct WebRTC DataChannel (SCTP / DTLS 256-bit)</span>
+            </div>
+          </div>
+
+          <div class="pipeline-node node-server">
+            <div class="pipeline-avatar">⚡</div>
+            <div class="pipeline-name">Signaling Server</div>
+            <div class="pipeline-detail">0 KB File Storage</div>
+          </div>
+
+          <div class="pipeline-node node-receiver">
+            <div class="pipeline-avatar">📱</div>
+            <div class="pipeline-name">Device B (Receiver)</div>
+            <div class="pipeline-detail">Native Auto-Download</div>
+          </div>
+        </div>
+
+        <div class="tech-specs-grid">
+          <div class="spec-tile">
+            <div class="spec-icon">🔒</div>
+            <div class="spec-content">
+              <h4>Zero-Knowledge Privacy</h4>
+              <p>The signaling server coordinates connection setup only. File bytes flow exclusively browser-to-browser with no cloud caching or disk logging.</p>
+            </div>
+          </div>
+
+          <div class="spec-tile">
+            <div class="spec-icon">⚡</div>
+            <div class="spec-content">
+              <h4>64 KB Chunk Slicing & Flow Control</h4>
+              <p>Large files (1 GB, 4 GB+) stream smoothly using active backpressure flow control via <code>bufferedamountlow</code>, preventing memory overflow or channel disconnects.</p>
+            </div>
+          </div>
+
+          <div class="spec-tile">
+            <div class="spec-icon">📶</div>
+            <div class="spec-content">
+              <h4>Local Wi-Fi / LAN Gigabit Speeds</h4>
+              <p>When devices share the same Wi-Fi router or local switch, transfers bypass external internet bottlenecks and stream at full network interface line speeds.</p>
+            </div>
+          </div>
+
+          <div class="spec-tile">
+            <div class="spec-icon">🛡️</div>
+            <div class="spec-content">
+              <h4>Hardware-Accelerated DTLS-SRTP</h4>
+              <p>All WebRTC DataChannels are end-to-end encrypted by default using AES-128/256-bit DTLS, safeguarding against eavesdropping or man-in-the-middle inspection.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-  </main>
+    <!-- Features Section -->
+    <section class="features-section" id="featuresSection">
+      <div class="guide-header">
+        <div class="guide-badge">KEY ADVANTAGES</div>
+        <h2 class="guide-heading">Engineered for Performance & Simplicity</h2>
+      </div>
 
-  <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container"></div>
+      <div class="features-cards-grid">
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">🚀</div>
+          <h3 class="f-card-title">No File Size Limits</h3>
+          <p class="f-card-desc">Transfer multi-gigabyte 4K video footage, virtual machine disks, and zip archives without artificial file size caps.</p>
+        </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">🌐</div>
+          <h3 class="f-card-title">100% Cross-Platform</h3>
+          <p class="f-card-desc">Works seamlessly across Windows, macOS, Linux, Android, and iOS directly in any modern browser without installing apps.</p>
+        </div>
+
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">💾</div>
+          <h3 class="f-card-title">Persistent Room & History</h3>
+          <p class="f-card-desc">Active Room IDs, transfer history, and device preferences are preserved in local storage, so page refreshes never reset your session.</p>
+        </div>
+
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">📶</div>
+          <h3 class="f-card-title">Works Offline on Local Wi-Fi</h3>
+          <p class="f-card-desc">Transfer files between devices on the same Wi-Fi router even if your external ISP or internet connection is temporarily offline.</p>
+        </div>
+
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">🎯</div>
+          <h3 class="f-card-title">Zero Registration & Login</h3>
+          <p class="f-card-desc">No accounts, passwords, or phone verification required. Open the link, join a room, and start transferring in seconds.</p>
+        </div>
+
+        <div class="f-card">
+          <div class="f-card-glow"></div>
+          <div class="f-card-icon">📦</div>
+          <h3 class="f-card-title">Automatic Native Download</h3>
+          <p class="f-card-desc">Incoming chunks assemble in browser memory and trigger instant file downloads on completion without manual user approval clicks.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section" id="faqSection">
+      <div class="guide-header">
+        <div class="guide-badge">FAQ</div>
+        <h2 class="guide-heading">Frequently Asked Questions</h2>
+      </div>
+
+      <div class="faq-accordion-grid">
+        <div class="faq-card">
+          <div class="faq-q">
+            <span class="faq-q-icon">?</span>
+            <h4>Are my files stored on any server?</h4>
+          </div>
+          <p class="faq-a"><strong>Never.</strong> PeerDrop is built on a Zero-Knowledge peer-to-peer architecture. 0 KB of file content is stored on any server. File streams flow directly peer-to-peer between browsers.</p>
+        </div>
+
+        <div class="faq-card">
+          <div class="faq-q">
+            <span class="faq-q-icon">?</span>
+            <h4>How do I connect another phone or laptop on the same Wi-Fi?</h4>
+          </div>
+          <p class="faq-a">Open the local Wi-Fi URL displayed in the top bar (e.g. <code>http://&lt;IP&gt;:3003</code>) on your other device, enter the same Room ID, and click <strong>Join</strong>.</p>
+        </div>
+
+        <div class="faq-card">
+          <div class="faq-q">
+            <span class="faq-q-icon">?</span>
+            <h4>How are large files (1 GB+) handled without freezing?</h4>
+          </div>
+          <p class="faq-a">Files are split into 64 KB slices with <strong>WebRTC Backpressure Flow Control</strong>, monitoring buffer capacity and pacing transmission before memory or socket limits can be reached.</p>
+        </div>
+
+        <div class="faq-card">
+          <div class="faq-q">
+            <span class="faq-q-icon">?</span>
+            <h4>What happens when I refresh the page?</h4>
+          </div>
+          <p class="faq-a">Your <strong>Room ID</strong> and <strong>Transfer History</strong> are stored in browser local storage, so refreshing the page restores your exact room and activity seamlessly.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Global Footer -->
+    <footer class="app-footer">
+      <div class="footer-wrap">
+        <div class="footer-left">
+          <div class="footer-logo">PeerDrop</div>
+          <p class="footer-description">Zero-Knowledge P2P Encrypted File Mesh Engine</p>
+        </div>
+        <div class="footer-right">
+          <span>WebRTC &bull; Socket.io &bull; Node.js</span>
+          <span class="footer-dot">&bull;</span>
+          <span>End-to-End Encrypted</span>
+        </div>
+      </div>
+    </footer>
+
+  </div> <!-- End .app-layout -->
+
+  <!-- Toast Notification Shelf -->
+  <div id="toastContainer" class="toast-shelf"></div>
+
+  <!-- Rename Device Modal -->
+  <div class="modal-overlay" id="modalBackdrop" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-heading">Rename Device</h3>
+        <p class="modal-sub">This name will be broadcast to other peers in your room.</p>
+      </div>
+      <input type="text" id="inputDeviceName" class="modal-text-input" maxlength="25" placeholder="e.g. Sahil's MacBook" />
+      <div class="modal-btn-row">
+        <button type="button" id="btnCancelRename" class="btn-modal-secondary">Cancel</button>
+        <button type="button" id="btnSaveRename" class="btn-modal-primary">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.IO Client (CDN with fallback) -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@
   <a href="#-features">Key Features</a> &bull;
   <a href="#-architecture">Architecture</a> &bull;
   <a href="#-quick-start">Quick Start</a> &bull;
-  <a href="#-how-it-works">How It Works</a> &bull;
+  <a href="#-deploying-on-render">Deploy on Render</a> &bull;
   <a href="#-author">Author</a>
 </p>
 
@@ -39,9 +39,11 @@ No files ever touch the server. The Node.js signaling server only acts as a ligh
 
 * **🔒 Zero-Knowledge Privacy:** Files are never uploaded, stored, or cached on any intermediary server or database.
 * **⚡ High-Throughput Binary Streaming:** Files are sliced into 64KB chunks and streamed through `RTCDataChannel` with active buffer backpressure management.
-* **📱 Cross-Platform Pairing:** Seamlessly transfer files between Windows, macOS, Linux, iOS (iPhone/iPad), and Android by sharing a 6-digit room code or invite URL.
+* **📱 Cross-Platform Pairing:** Seamlessly transfer files between Windows, macOS, Linux, iOS (iPhone/iPad), and Android by sharing a room code or invite URL.
 * **🎯 Live Radar Scanner HUD:** Cyberpunk / Obsidian dark UI featuring an animated radar scanner displaying connected peers as interactive nodes.
 * **📊 Real-Time Transfer Metrics:** Live transfer percentage, current transfer speed (MB/s), elapsed time, and automatic file download upon chunk reassembly.
+* **🔄 Persistent Sessions:** Room IDs and transfer history survive page refreshes through browser local storage.
+* **⏱️ Automatic Self-Ping Keep-Alive:** Built-in 5-minute self-ping engine prevents free-tier platforms (like Render) from sleeping.
 
 ---
 
@@ -80,14 +82,33 @@ npm start
 
 Open your browser at:
 ```
-http://localhost:5050
+http://localhost:3003
 ```
 
 To test P2P file transfer:
-1. Open `http://localhost:5050` in Tab 1.
-2. Click **"Invite Peer"** to copy the room link.
-3. Open the link in Tab 2 (or on your phone connected to the same Wi-Fi).
+1. Open `http://localhost:3003` on Device 1.
+2. Click **"Share Link"** or note the Room ID.
+3. Open the link on Device 2 (or on your phone connected to the same Wi-Fi).
 4. Drag and drop any file — watch it stream in real time and auto-download!
+
+---
+
+## ☁️ Deploying on Render (Free Tier Keep-Alive)
+
+Render free-tier Web Services go to sleep after 15 minutes of inactivity. **PeerDrop includes an automatic 5-minute self-ping engine to keep the instance active:**
+
+1. Create a **New Web Service** on [Render.com](https://render.com) and connect your GitHub repo.
+2. **Build Command:** `npm install`
+3. **Start Command:** `npm start`
+4. **Zero-Configuration Keep-Alive:**
+   - Render automatically provides `RENDER_EXTERNAL_URL` (e.g., `https://peerdrop.onrender.com`).
+   - PeerDrop automatically detects this variable and starts pinging `/ping` every 5 minutes.
+   - You can also manually set `SELF_PING_URL=https://your-app-name.onrender.com` in Render's Environment settings.
+   - Custom ping interval can be configured with `PING_INTERVAL_MINUTES=5` (default: 5).
+
+### Health & Keep-Alive Endpoints:
+- `GET /ping` -> returns `pong` (lightweight 200 OK)
+- `GET /health` -> returns `{ status: "ok", uptime: ..., timestamp: ... }`
 
 ---
 
@@ -97,9 +118,3 @@ To test P2P file transfer:
 * GitHub: [@SahilRajput2266](https://github.com/SahilRajput2266)
 * Email: [sahilrajput6244@gmail.com](mailto:sahilrajput6244@gmail.com)
 * LinkedIn: [Sahil Chauhan](https://www.linkedin.com/in/sahil-chauhan-6bb687237)
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.

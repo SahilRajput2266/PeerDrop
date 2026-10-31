@@ -6,14 +6,38 @@
 (function () {
   'use strict';
 
-  const socket = io();
+  // Network & Room Info with Persistence
   const urlParams = new URLSearchParams(window.location.search);
-  const roomId = urlParams.get('room') || 'PD-' + Math.floor(1000 + Math.random() * 9000);
-  
+  let rawRoom = urlParams.get('room');
+  if (!rawRoom) {
+    // Check localStorage first so refresh never kicks user into a random new room
+    rawRoom = localStorage.getItem('peerdrop_room');
+    if (!rawRoom) {
+      rawRoom = 'PD-' + Math.floor(1000 + Math.random() * 9000);
+    }
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('room', rawRoom);
+    window.history.replaceState({}, '', newUrl.toString());
+  }
+  const roomId = rawRoom.trim().toUpperCase();
+  localStorage.setItem('peerdrop_room', roomId);
+
+  let serverNetworkIp = null;
+  let serverPort = window.location.port || '3003';
+
   // UI Elements
   const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+  const roomPill = document.getElementById('roomPill');
   const btnCopyInvite = document.getElementById('btnCopyInvite');
   const localDeviceLabel = document.getElementById('localDeviceLabel');
+  const devicePill = document.getElementById('devicePill');
+  const formJoinRoom = document.getElementById('formJoinRoom');
+  const inputCustomRoom = document.getElementById('inputCustomRoom');
+  const btnJoinRoom = document.getElementById('btnJoinRoom');
+  const btnNewRoom = document.getElementById('btnNewRoom');
+  const lanInfoPill = document.getElementById('lanInfoPill');
+  const lanUrlDisplay = document.getElementById('lanUrlDisplay');
+  const btnCopyLanUrl = document.getElementById('btnCopyLanUrl');
   const scannerStatus = document.getElementById('scannerStatus');
   const peerPinsContainer = document.getElementById('peerPinsContainer');
   const dropzone = document.getElementById('dropzone');
@@ -26,18 +50,89 @@
   const hudProgressFill = document.getElementById('hudProgressFill');
   const hudStatus = document.getElementById('hudStatus');
   const historyList = document.getElementById('historyList');
+  const historyEmpty = document.getElementById('historyEmpty');
+  const historyCount = document.getElementById('historyCount');
+  const btnHistoryClear = document.getElementById('btnHistoryClear');
   const toastContainer = document.getElementById('toastContainer');
+
+  // Modal elements
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const inputDeviceName = document.getElementById('inputDeviceName');
+  const btnCancelRename = document.getElementById('btnCancelRename');
+  const btnSaveRename = document.getElementById('btnSaveRename');
 
   roomCodeDisplay.textContent = roomId;
 
-  // Device Detection
+  // Device Detection & Custom Name Persistence
   const ua = navigator.userAgent;
-  let deviceName = 'Desktop Browser';
-  if (/android/i.test(ua)) deviceName = 'Android Mobile';
-  else if (/iPhone|iPad|iPod/i.test(ua)) deviceName = 'Apple iOS';
-  else if (/Mac/i.test(ua)) deviceName = 'macOS Workstation';
-  else if (/Windows/i.test(ua)) deviceName = 'Windows PC';
+  let defaultDevice = 'Desktop Browser';
+  if (/android/i.test(ua)) defaultDevice = 'Android Mobile';
+  else if (/iPhone|iPad|iPod/i.test(ua)) defaultDevice = 'Apple iOS';
+  else if (/Mac/i.test(ua)) defaultDevice = 'macOS Workstation';
+  else if (/Windows/i.test(ua)) defaultDevice = 'Windows PC';
+
+  let deviceName = localStorage.getItem('peerdrop_device_name') || defaultDevice;
   localDeviceLabel.textContent = deviceName;
+
+  // Device Rename Modal
+  if (devicePill) {
+    devicePill.addEventListener('click', () => {
+      inputDeviceName.value = deviceName;
+      modalBackdrop.style.display = 'flex';
+      inputDeviceName.focus();
+    });
+  }
+
+  if (btnCancelRename) {
+    btnCancelRename.addEventListener('click', () => {
+      modalBackdrop.style.display = 'none';
+    });
+  }
+
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) modalBackdrop.style.display = 'none';
+    });
+  }
+
+  if (btnSaveRename) {
+    btnSaveRename.addEventListener('click', () => {
+      const val = (inputDeviceName.value || '').trim();
+      if (val) {
+        deviceName = val;
+        localStorage.setItem('peerdrop_device_name', deviceName);
+        localDeviceLabel.textContent = deviceName;
+        showToast(`Device renamed to: ${deviceName} ✎`);
+      }
+      modalBackdrop.style.display = 'none';
+    });
+  }
+
+  // Fetch Server Network Info (for LAN Wi-Fi sharing)
+  fetch('/api/info')
+    .then(r => r.json())
+    .then(data => {
+      serverNetworkIp = data.networkIp;
+      serverPort = data.port;
+      if (serverNetworkIp && serverNetworkIp !== 'localhost' && serverNetworkIp !== '127.0.0.1') {
+        const lanUrl = `http://${serverNetworkIp}:${serverPort}`;
+        lanUrlDisplay.textContent = lanUrl;
+        lanInfoPill.style.display = 'flex';
+      }
+    })
+    .catch(() => {});
+
+  // Socket Connection: Uses Render backend (thakurboothouse.onrender.com) when hosted on Vercel or remote
+  const RENDER_BACKEND_URL = 'https://thakurboothouse.onrender.com';
+  const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const socketUrl = window.PEERDROP_BACKEND_URL || 
+    (isLocalHost && (window.location.port === '3003' || window.location.port === '3000') 
+      ? '' 
+      : RENDER_BACKEND_URL);
+
+  const socket = io(socketUrl, {
+    transports: ['websocket', 'polling'],
+  });
 
   // WebRTC Configuration
   const rtcConfig = {
@@ -47,8 +142,7 @@
     ]
   };
 
-  const peers = new Map(); // targetId -> { pc, dc, name, device }
-  const CHUNK_SIZE = 64 * 1024; // 64 KB binary chunks
+  const peers = new Map(); // targetId -> { pc, dc, name, device, pendingCandidates: [] }
 
   // Join Signaling Room
   socket.on('connect', () => {
@@ -57,7 +151,7 @@
       clientName: deviceName + ' #' + socket.id.substring(0, 4),
       device: deviceName
     });
-    showToast('Joined P2P mesh network ✨');
+    showToast(`Connected to room: ${roomId} ✨`);
   });
 
   // Received list of existing peers in room
@@ -83,8 +177,12 @@
     if (pin) pin.remove();
     if (peers.has(peerId)) {
       const p = peers.get(peerId);
-      if (p.dc) p.dc.close();
-      if (p.pc) p.pc.close();
+      if (p.dc) {
+        try { p.dc.close(); } catch(e) {}
+      }
+      if (p.pc) {
+        try { p.pc.close(); } catch(e) {}
+      }
       peers.delete(peerId);
     }
     showToast('A peer disconnected');
@@ -95,9 +193,20 @@
   socket.on('signal:offer', async ({ senderId, senderInfo, offer }) => {
     let peer = peers.get(senderId);
     if (!peer) {
-      peer = initiatePeerConnection(senderId, false, senderInfo.name);
+      peer = initiatePeerConnection(senderId, false, senderInfo?.name);
     }
     await peer.pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+    // Process queued candidates
+    if (peer.pendingCandidates && peer.pendingCandidates.length > 0) {
+      for (const cand of peer.pendingCandidates) {
+        try {
+          await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
+        } catch (err) {}
+      }
+      peer.pendingCandidates = [];
+    }
+
     const answer = await peer.pc.createAnswer();
     await peer.pc.setLocalDescription(answer);
     socket.emit('signal:answer', { targetId: senderId, answer });
@@ -107,16 +216,30 @@
     const peer = peers.get(senderId);
     if (peer) {
       await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+      // Process queued candidates
+      if (peer.pendingCandidates && peer.pendingCandidates.length > 0) {
+        for (const cand of peer.pendingCandidates) {
+          try {
+            await peer.pc.addIceCandidate(new RTCIceCandidate(cand));
+          } catch (err) {}
+        }
+        peer.pendingCandidates = [];
+      }
     }
   });
 
   socket.on('signal:candidate', async ({ senderId, candidate }) => {
     const peer = peers.get(senderId);
     if (peer && candidate) {
-      try {
-        await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (err) {
-        console.error('ICE Candidate error', err);
+      if (peer.pc.remoteDescription && peer.pc.remoteDescription.type) {
+        try {
+          await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.error('ICE Candidate error', err);
+        }
+      } else {
+        peer.pendingCandidates.push(candidate);
       }
     }
   });
@@ -124,7 +247,12 @@
   // Peer Connection Lifecycle
   function initiatePeerConnection(targetId, isInitiator, peerName) {
     const pc = new RTCPeerConnection(rtcConfig);
-    const peerData = { pc, dc: null, name: peerName || 'Peer' };
+    const peerData = { 
+      pc, 
+      dc: null, 
+      name: peerName || 'Peer',
+      pendingCandidates: []
+    };
     peers.set(targetId, peerData);
 
     pc.onicecandidate = (e) => {
@@ -158,126 +286,235 @@
   let receivedBuffers = [];
   let receivedBytes = 0;
   let transferStartTime = 0;
+  let lastReceiverUiUpdate = 0;
 
   function setupDataChannel(dc, peerId) {
     dc.binaryType = 'arraybuffer';
+    dc.bufferedAmountLowThreshold = 256 * 1024;
 
     dc.onopen = () => {
-      showToast(`Direct P2P DataChannel open with ${peers.get(peerId)?.name || 'peer'}`);
+      showToast(`P2P DataChannel open with ${peers.get(peerId)?.name || 'peer'} ⚡`);
       updateScannerState();
     };
 
+    dc.onclose = () => {
+      updateScannerState();
+    };
+
+    dc.onerror = (err) => {
+      console.error('DataChannel error:', err);
+    };
+
     dc.onmessage = (e) => {
-      if (typeof e.data === 'string') {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'file-start') {
-          incomingFileMeta = msg;
-          receivedBuffers = [];
-          receivedBytes = 0;
-          transferStartTime = Date.now();
-          transferHud.style.display = 'block';
-          hudFileName.textContent = msg.name;
-          hudStatus.textContent = 'Receiving encrypted stream...';
-        } else if (msg.type === 'file-end') {
-          // File complete: assemble blob and auto download
-          const blob = new Blob(receivedBuffers, { type: incomingFileMeta.mimeType || 'application/octet-stream' });
-          const downloadUrl = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = downloadUrl;
-          a.download = incomingFileMeta.name;
-          a.click();
-          URL.revokeObjectURL(downloadUrl);
+      try {
+        if (typeof e.data === 'string') {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'file-start') {
+            incomingFileMeta = msg;
+            receivedBuffers = [];
+            receivedBytes = 0;
+            transferStartTime = Date.now();
+            lastReceiverUiUpdate = 0;
+            transferHud.style.display = 'block';
+            hudFileName.textContent = msg.name;
+            hudFileSize.textContent = `0 B / ${formatBytes(msg.size)}`;
+            hudPercent.textContent = '0%';
+            hudProgressFill.style.width = '0%';
+            hudSpeed.textContent = '0 MB/s';
+            hudStatus.textContent = 'Receiving encrypted stream...';
+          } else if (msg.type === 'file-end') {
+            if (!incomingFileMeta) return;
 
-          hudStatus.textContent = 'Transfer Completed! Saved to Downloads.';
-          addHistoryItem(incomingFileMeta.name, formatBytes(incomingFileMeta.size), 'Received');
-          showToast(`Downloaded ${incomingFileMeta.name} 🎉`);
-          setTimeout(() => { transferHud.style.display = 'none'; }, 4000);
+            // Assemble blob from received chunks
+            const blob = new Blob(receivedBuffers, { type: incomingFileMeta.mimeType || 'application/octet-stream' });
+            receivedBuffers = []; // Clear RAM buffers immediately
+
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = incomingFileMeta.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+
+            hudStatus.textContent = 'Transfer Completed! Saved to Downloads.';
+            hudPercent.textContent = '100%';
+            hudProgressFill.style.width = '100%';
+            addHistoryItem(incomingFileMeta.name, formatBytes(incomingFileMeta.size), 'Received');
+            showToast(`Downloaded ${incomingFileMeta.name} 🎉`);
+            incomingFileMeta = null;
+            setTimeout(() => { transferHud.style.display = 'none'; }, 4000);
+          }
+        } else {
+          // Binary chunk received
+          if (!incomingFileMeta) return;
+
+          receivedBuffers.push(e.data);
+          receivedBytes += e.data.byteLength;
+
+          // Throttled UI updates for receiver
+          const now = Date.now();
+          if (now - lastReceiverUiUpdate > 80 || receivedBytes >= incomingFileMeta.size) {
+            lastReceiverUiUpdate = now;
+            const pct = Math.min(100, Math.floor((receivedBytes / incomingFileMeta.size) * 100));
+            hudPercent.textContent = pct + '%';
+            hudProgressFill.style.width = pct + '%';
+            hudFileSize.textContent = `${formatBytes(receivedBytes)} / ${formatBytes(incomingFileMeta.size)}`;
+
+            const elapsedSec = (now - transferStartTime) / 1000;
+            const speedMB = (receivedBytes / (1024 * 1024)) / (elapsedSec || 1);
+            hudSpeed.textContent = speedMB.toFixed(1) + ' MB/s';
+          }
         }
-      } else {
-        // Binary chunk received
-        receivedBuffers.push(e.data);
-        receivedBytes += e.data.byteLength;
-
-        const pct = Math.floor((receivedBytes / incomingFileMeta.size) * 100);
-        hudPercent.textContent = pct + '%';
-        hudProgressFill.style.width = pct + '%';
-        hudFileSize.textContent = `${formatBytes(receivedBytes)} / ${formatBytes(incomingFileMeta.size)}`;
-
-        const elapsedSec = (Date.now() - transferStartTime) / 1000;
-        const speedMB = (receivedBytes / (1024 * 1024)) / (elapsedSec || 1);
-        hudSpeed.textContent = speedMB.toFixed(1) + ' MB/s';
+      } catch (err) {
+        console.error('Error handling DataChannel message:', err);
       }
     };
   }
 
-  // Sending File Chunks over DataChannel
+  // Robust File Sending Engine with Slice Chunking & Backpressure Control
+  const CHUNK_SIZE = 64 * 1024; // 64 KB binary chunk size (WebRTC standard limit)
+  const BUFFER_THRESHOLD = 512 * 1024; // 512 KB backpressure threshold
+  let isTransferring = false;
+
+  function waitDrain(dc) {
+    if (dc.bufferedAmount <= BUFFER_THRESHOLD) return Promise.resolve();
+    return new Promise(resolve => {
+      let resolved = false;
+      function done() {
+        if (resolved) return;
+        resolved = true;
+        dc.removeEventListener('bufferedamountlow', done);
+        clearTimeout(timer);
+        resolve();
+      }
+      const timer = setTimeout(done, 50);
+      dc.addEventListener('bufferedamountlow', done);
+    });
+  }
+
   async function sendFileToPeers(file) {
-    if (peers.size === 0) {
-      alert('No peers connected! Please open this room on another device or send the invite link.');
+    if (isTransferring) {
+      showToast('⚠️ Transfer already in progress. Please wait.');
       return;
     }
 
-    transferHud.style.display = 'block';
-    hudFileName.textContent = file.name;
-    hudStatus.textContent = 'Broadcasting chunks to connected peers...';
-    transferStartTime = Date.now();
-
-    // 1. Notify metadata
-    const metaPayload = JSON.stringify({
-      type: 'file-start',
-      name: file.name,
-      size: file.size,
-      mimeType: file.type
-    });
-
+    // Filter peers that have an open DataChannel
+    const activePeers = [];
     peers.forEach(p => {
       if (p.dc && p.dc.readyState === 'open') {
-        p.dc.send(metaPayload);
+        activePeers.push(p);
       }
     });
 
-    // 2. Stream Binary Chunks with Backpressure Control
-    const reader = file.stream().getReader();
-    let sentBytes = 0;
+    if (activePeers.length === 0) {
+      alert('No connected peers found with an open DataChannel. Make sure the other device is in this room.');
+      return;
+    }
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    isTransferring = true;
+    transferHud.style.display = 'block';
+    hudFileName.textContent = file.name;
+    hudFileSize.textContent = `0 B / ${formatBytes(file.size)}`;
+    hudPercent.textContent = '0%';
+    hudProgressFill.style.width = '0%';
+    hudSpeed.textContent = '0 MB/s';
+    hudStatus.textContent = 'Broadcasting metadata...';
+    transferStartTime = Date.now();
+    let lastUiUpdate = 0;
 
-      // Check buffer size across peers
-      for (const p of peers.values()) {
-        if (p.dc && p.dc.readyState === 'open') {
-          // If buffered amount is high (>1MB), wait for drain
-          if (p.dc.bufferedAmount > 1024 * 1024) {
-            await new Promise(r => setTimeout(r, 20));
-          }
-          p.dc.send(value.buffer);
+    try {
+      // 1. Notify metadata
+      const metaPayload = JSON.stringify({
+        type: 'file-start',
+        name: file.name,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream'
+      });
+
+      for (const p of activePeers) {
+        if (p.dc.readyState === 'open') {
+          p.dc.send(metaPayload);
         }
       }
 
-      sentBytes += value.byteLength;
-      const pct = Math.floor((sentBytes / file.size) * 100);
-      hudPercent.textContent = pct + '%';
-      hudProgressFill.style.width = pct + '%';
-      hudFileSize.textContent = `${formatBytes(sentBytes)} / ${formatBytes(file.size)}`;
+      hudStatus.textContent = 'Streaming file chunks directly to peer(s)...';
 
-      const elapsedSec = (Date.now() - transferStartTime) / 1000;
-      const speedMB = (sentBytes / (1024 * 1024)) / (elapsedSec || 1);
-      hudSpeed.textContent = speedMB.toFixed(1) + ' MB/s';
-    }
+      // 2. Stream Binary Chunks with Backpressure & Chunk Slicing
+      let sentBytes = 0;
+      for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+        for (const p of activePeers) {
+          if (p.dc.readyState === 'open' && p.dc.bufferedAmount > BUFFER_THRESHOLD) {
+            await waitDrain(p.dc);
+          }
+        }
 
-    // 3. Send file-end signal
-    const endPayload = JSON.stringify({ type: 'file-end' });
-    peers.forEach(p => {
-      if (p.dc && p.dc.readyState === 'open') {
-        p.dc.send(endPayload);
+        const slice = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
+        const chunk = await slice.arrayBuffer();
+
+        let anySent = false;
+        for (const p of activePeers) {
+          if (p.dc.readyState === 'open') {
+            p.dc.send(chunk);
+            anySent = true;
+          }
+        }
+
+        if (!anySent) {
+          throw new Error('Peer connection was closed during transfer');
+        }
+
+        sentBytes += chunk.byteLength;
+
+        // Throttled UI update
+        const now = Date.now();
+        if (now - lastUiUpdate > 80 || sentBytes >= file.size) {
+          lastUiUpdate = now;
+          const pct = Math.min(100, Math.floor((sentBytes / file.size) * 100));
+          hudPercent.textContent = pct + '%';
+          hudProgressFill.style.width = pct + '%';
+          hudFileSize.textContent = `${formatBytes(sentBytes)} / ${formatBytes(file.size)}`;
+
+          const elapsedSec = (now - transferStartTime) / 1000;
+          const speedMB = (sentBytes / (1024 * 1024)) / (elapsedSec || 1);
+          hudSpeed.textContent = speedMB.toFixed(1) + ' MB/s';
+        }
       }
-    });
 
-    hudStatus.textContent = 'File Sent Successfully!';
-    addHistoryItem(file.name, formatBytes(file.size), 'Sent');
-    showToast(`Successfully sent ${file.name} 🚀`);
-    setTimeout(() => { transferHud.style.display = 'none'; }, 4000);
+      // Ensure buffer is fully drained
+      for (const p of activePeers) {
+        if (p.dc.readyState === 'open' && p.dc.bufferedAmount > 0) {
+          while (p.dc.readyState === 'open' && p.dc.bufferedAmount > 0) {
+            await new Promise(r => setTimeout(r, 20));
+          }
+        }
+      }
+
+      // 3. Send file-end signal
+      const endPayload = JSON.stringify({ type: 'file-end' });
+      for (const p of activePeers) {
+        if (p.dc.readyState === 'open') {
+          p.dc.send(endPayload);
+        }
+      }
+
+      hudStatus.textContent = 'Transfer Completed Successfully! 🚀';
+      hudPercent.textContent = '100%';
+      hudProgressFill.style.width = '100%';
+      addHistoryItem(file.name, formatBytes(file.size), 'Sent');
+      showToast(`Successfully sent ${file.name} 🚀`);
+      setTimeout(() => { 
+        if (!isTransferring) transferHud.style.display = 'none'; 
+      }, 4000);
+
+    } catch (err) {
+      console.error('File transfer error:', err);
+      hudStatus.textContent = 'Transfer Interrupted: ' + (err.message || 'Unknown error');
+      showToast('❌ Transfer failed: ' + (err.message || 'Error occurred'));
+    } finally {
+      isTransferring = false;
+    }
   }
 
   // Radar UI Nodes
@@ -287,25 +524,49 @@
     pin.id = 'pin-' + peer.id;
     pin.className = 'peer-pin';
 
-    // Position around radar circle randomly
+    // Position using percentages so it stays centered across mobile and desktop
     const angle = Math.random() * 2 * Math.PI;
-    const radius = 80;
-    const cx = 130 + radius * Math.cos(angle);
-    const cy = 130 + radius * Math.sin(angle);
-    pin.style.left = cx + 'px';
-    pin.style.top = cy + 'px';
+    const radiusPercent = 33;
+    const leftPercent = 50 + radiusPercent * Math.cos(angle);
+    const topPercent = 50 + radiusPercent * Math.sin(angle);
+    pin.style.left = leftPercent + '%';
+    pin.style.top = topPercent + '%';
+
+    const isMobile = /mobile|iphone|android|ipad/i.test(peer.device || '');
+    const deviceIconSvg = isMobile
+      ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="3" ry="3"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>`
+      : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>`;
 
     pin.innerHTML = `
-      <div class="peer-pin-avatar" title="${peer.name}">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-          <line x1="12" y1="18" x2="12.01" y2="18"></line>
-        </svg>
+      <div class="peer-pin-avatar" title="${escapeHTML(peer.name)} (${peer.device || 'Peer'})">
+        ${deviceIconSvg}
       </div>
-      <span class="peer-pin-name">${peer.name}</span>
+      <span class="peer-pin-name">${escapeHTML(peer.name)}</span>
     `;
+
+    pin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showToast(`Selected: ${peer.name} 🎯 Pick file to send`);
+      fileInput.click();
+    });
+
     peerPinsContainer.appendChild(pin);
   }
+
+  // Active navigation tab synchronization
+  const allTabs = document.querySelectorAll('.nav-tab, .m-tab');
+  allTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const href = tab.getAttribute('href');
+      allTabs.forEach(t => {
+        if (t.getAttribute('href') === href) {
+          t.classList.add('active');
+        } else {
+          t.classList.remove('active');
+        }
+      });
+    });
+  });
 
   function updateScannerState() {
     if (peers.size > 0) {
@@ -317,10 +578,14 @@
     }
   }
 
-  // Drag & Drop Setup
+  // Drag & Drop Setup (sequential handling of multiple files)
   dropzone.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', (e) => {
-    Array.from(e.target.files).forEach(file => sendFileToPeers(file));
+  fileInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    for (const file of files) {
+      await sendFileToPeers(file);
+    }
   });
 
   dropzone.addEventListener('dragover', (e) => {
@@ -330,35 +595,209 @@
 
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
 
-  dropzone.addEventListener('drop', (e) => {
+  dropzone.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropzone.classList.remove('dragover');
-    Array.from(e.dataTransfer.files).forEach(file => sendFileToPeers(file));
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      await sendFileToPeers(file);
+    }
   });
 
-  // Invite Copy
+  // Robust Copy Helper (works on HTTP and HTTPS)
+  function copyText(text, successMsg) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(successMsg);
+      }).catch(() => {
+        fallbackCopy(text, successMsg);
+      });
+    } else {
+      fallbackCopy(text, successMsg);
+    }
+  }
+
+  function fallbackCopy(text, successMsg) {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (successful) {
+        showToast(successMsg);
+      } else {
+        prompt('Copy room details:', text);
+      }
+    } catch (err) {
+      prompt('Copy room details:', text);
+    }
+  }
+
+  // Copy Room Code when clicking on Room badge
+  roomPill.addEventListener('click', () => {
+    copyText(roomId, `Room Code "${roomId}" copied 📋`);
+  });
+
+  // Join Room by typing custom ID
+  function joinCustomRoom() {
+    const entered = (inputCustomRoom.value || '').trim().toUpperCase();
+    if (!entered) {
+      showToast('⚠️ Please enter a room ID');
+      inputCustomRoom.focus();
+      return;
+    }
+    if (entered === roomId) {
+      showToast(`ℹ️ Already in room: ${roomId}`);
+      return;
+    }
+    localStorage.setItem('peerdrop_room', entered);
+    const targetUrl = new URL(window.location.href);
+    targetUrl.searchParams.set('room', entered);
+    window.location.href = targetUrl.toString();
+  }
+
+  formJoinRoom.addEventListener('submit', (e) => {
+    e.preventDefault();
+    joinCustomRoom();
+  });
+
+  btnJoinRoom.addEventListener('click', (e) => {
+    e.preventDefault();
+    joinCustomRoom();
+  });
+
+  // Create New Random Room
+  btnNewRoom.addEventListener('click', () => {
+    const newRoom = 'PD-' + Math.floor(1000 + Math.random() * 9000);
+    localStorage.setItem('peerdrop_room', newRoom);
+    const targetUrl = new URL(window.location.href);
+    targetUrl.searchParams.set('room', newRoom);
+    window.location.href = targetUrl.toString();
+  });
+
+  // Invite Link Copy:
   btnCopyInvite.addEventListener('click', () => {
-    const url = window.location.origin + window.location.pathname + '?room=' + encodeURIComponent(roomId);
-    navigator.clipboard.writeText(url).then(() => {
-      showToast('Invite link copied! Send it to phone or friend 📋');
-    });
+    let host = window.location.host;
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocalhost && serverNetworkIp && serverNetworkIp !== 'localhost') {
+      host = `${serverNetworkIp}:${serverPort}`;
+    }
+    const inviteUrl = `${window.location.protocol}//${host}${window.location.pathname}?room=${encodeURIComponent(roomId)}`;
+    copyText(inviteUrl, 'Invite link copied! Share with another device 📋');
   });
 
-  // History Helper
-  function addHistoryItem(name, size, type) {
-    const emptyEl = historyList.querySelector('.history-empty');
-    if (emptyEl) emptyEl.remove();
+  // Copy LAN URL
+  if (btnCopyLanUrl) {
+    btnCopyLanUrl.addEventListener('click', () => {
+      const lanUrl = lanUrlDisplay.textContent;
+      copyText(lanUrl, 'Wi-Fi URL copied: ' + lanUrl + ' 📋');
+    });
+  }
+  if (lanUrlDisplay) {
+    lanUrlDisplay.addEventListener('click', () => {
+      const lanUrl = lanUrlDisplay.textContent;
+      copyText(lanUrl, 'Wi-Fi URL copied: ' + lanUrl + ' 📋');
+    });
+  }
 
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.innerHTML = `
-      <div>
-        <strong>${name}</strong>
-        <span style="color: var(--text-dim); margin-left: 6px;">(${size})</span>
+  // ==========================================================
+  // Persistent History Engine (Survives Refresh!)
+  // ==========================================================
+  const STORAGE_KEY = 'peerdrop_transfers_history';
+
+  function getSavedHistory() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHistoryToStorage(item) {
+    const history = getSavedHistory();
+    history.unshift(item);
+    // Keep last 40 items
+    if (history.length > 40) history.pop();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  }
+
+  function renderHistoryDOM(item) {
+    if (historyEmpty) historyEmpty.style.display = 'none';
+
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    const timeStr = item.time ? new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now';
+    div.innerHTML = `
+      <div class="history-item-left">
+        <span class="history-item-name">${escapeHTML(item.name)}</span>
+        <span class="history-item-meta">${item.size} &bull; ${timeStr}</span>
       </div>
-      <span style="color: ${type === 'Sent' ? '#38BDF8' : '#10B981'}; font-weight: 600;">${type}</span>
+      <span class="history-badge-type ${item.type === 'Sent' ? 'type-sent' : 'type-received'}">${item.type}</span>
     `;
-    historyList.prepend(item);
+    historyList.prepend(div);
+  }
+
+  function loadAllHistory() {
+    const list = getSavedHistory();
+    historyList.innerHTML = '';
+    if (list.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'history-empty';
+      emptyDiv.id = 'historyEmpty';
+      emptyDiv.textContent = 'No transfers yet. Connect a second device using the room code or Wi-Fi URL above.';
+      historyList.appendChild(emptyDiv);
+      if (historyCount) historyCount.textContent = '0 transfers';
+      return;
+    }
+
+    // Render in reverse so prepend preserves order
+    for (let i = list.length - 1; i >= 0; i--) {
+      renderHistoryDOM(list[i]);
+    }
+    if (historyCount) historyCount.textContent = `${list.length} transfer${list.length > 1 ? 's' : ''}`;
+  }
+
+  function addHistoryItem(name, size, type) {
+    const record = {
+      name,
+      size,
+      type,
+      time: Date.now()
+    };
+    saveHistoryToStorage(record);
+    renderHistoryDOM(record);
+    const list = getSavedHistory();
+    if (historyCount) historyCount.textContent = `${list.length} transfer${list.length > 1 ? 's' : ''}`;
+  }
+
+  // Clear History Button
+  if (btnHistoryClear) {
+    btnHistoryClear.addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      loadAllHistory();
+      showToast('Transfer history cleared 🗑️');
+    });
+  }
+
+  // Initial load of saved history
+  loadAllHistory();
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+      tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag)
+    );
   }
 
   function formatBytes(bytes) {
@@ -377,7 +816,7 @@
     setTimeout(() => {
       toast.style.animation = 'toastOut 0.3s forwards';
       setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    }, 3000);
   }
 
 })();
